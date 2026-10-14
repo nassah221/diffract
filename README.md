@@ -1,12 +1,16 @@
 <img src="./.github/logo.png" width="80" />
 
-# diffity
+# Diffract
 
 [![Latest release](https://img.shields.io/github/v/release/nilbuild/diffity?display_name=tag&sort=semver&cacheSeconds=3600)](https://github.com/nilbuild/diffity/releases/latest)
 [![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey)](https://github.com/nilbuild/diffity/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-Diffity is a Mac app for reviewing code changes, yours or your agent's, GitHub-style, with Claude Code in the loop.
+**Diffract is a fork of [Diffity](https://github.com/nilbuild/diffity).** It adds Go navigation (gopls) inside the
+diff — hover for a signature, ⌘-click to follow a definition — and otherwise stays close to upstream.
+[FORK.md](./FORK.md) records what diverges, how to sync with upstream, and the licence and attribution terms.
+
+Diffract is a Mac app for reviewing code changes, yours or your agent's, GitHub-style, with Claude Code in the loop.
 
 <img src="./.github/screenshots/hero.png" alt="Diffity showing uncommitted changes with a comment thread answered by Claude" />
 
@@ -130,4 +134,4 @@ Found a bug or have an idea? [Open an issue](https://github.com/nilbuild/diffity
 
 ## License
 
-[MIT](./LICENSE) © [Kamran Ahmed](https://x.com/kamrify)
+[MIT](./LICENSE) © [Kamran Ahmed](https://x.com/kamrify) · fork changes © 2026 nassah221

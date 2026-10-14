@@ -22,12 +22,12 @@ export function AboutPane() {
       <div className="flex items-center gap-3 pt-1">
         <BrandLogo className="h-10 w-10 shrink-0" />
         <div>
-          <div className="text-[15px] font-semibold text-text">Diffity</div>
+          <div className="text-[15px] font-semibold text-text">Diffract</div>
           <div className="text-xs text-text-muted">Review code changes with Claude Code or Codex, locally.</div>
         </div>
       </div>
       <PreferencesGroup label="Version">
-        <PreferencesRow label="Diffity">
+        <PreferencesRow label="Diffract">
           <span className="font-mono text-xs text-text-secondary select-text">{versions?.app ?? '…'}</span>
         </PreferencesRow>
         <PreferencesRow label="Tauri runtime">
@@ -41,6 +41,12 @@ export function AboutPane() {
         <p className="pt-1.5 text-[12px] leading-relaxed text-text-secondary">
           Comments, reviews and settings live in a local database on this Mac. GitHub tokens are kept in the macOS
           keychain, or read from the GitHub CLI.
+        </p>
+      </PreferencesGroup>
+      <PreferencesGroup label="Fork">
+        <p className="pt-1.5 text-[12px] leading-relaxed text-text-secondary">
+          Diffract is a fork of Diffity (github.com/nilbuild/diffity), MIT licensed, © 2026 Kamran Ahmed. Changes made
+          in this fork are © 2026 nassah221.
         </p>
       </PreferencesGroup>
     </PreferencesPane>
