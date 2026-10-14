@@ -24,6 +24,7 @@ import type {
   GithubAuthStatus,
   LspEligibility,
   LspHover,
+  LspInlayHint,
   LspLocation,
   LspStatus,
   NewThread,
@@ -94,6 +95,17 @@ export const lspDefinition = (
   character: number,
   lineText: string,
 ) => invoke<LspLocation[]>('lsp_definition', { repoPath, ref, path, side, line, character, lineText });
+export const lspImplementation = (
+  repoPath: string,
+  ref: string,
+  path: string,
+  side: 'old' | 'new',
+  line: number,
+  character: number,
+  lineText: string,
+) => invoke<LspLocation[]>('lsp_implementation', { repoPath, ref, path, side, line, character, lineText });
+export const lspInlayHints = (repoPath: string, path: string, side: 'old' | 'new') =>
+  invoke<LspInlayHint[]>('lsp_inlay_hints', { repoPath, path, side });
 export const lspHover = (
   repoPath: string,
   ref: string,

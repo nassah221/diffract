@@ -27,6 +27,14 @@ export interface LspLocation {
   endCharacter: number;
 }
 
+/** `line` is 1-based; `character` is a 0-based code offset where the hint is inserted. `kind` 1 = type, 2 = parameter. */
+export interface LspInlayHint {
+  line: number;
+  character: number;
+  label: string;
+  kind: number | null;
+}
+
 /** A symbol's signature and doc comment, as the language server reports it (`markdown` for gopls). */
 export interface LspHover {
   kind: string;

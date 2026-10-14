@@ -1,5 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
-import { fetchLspEligibility } from '../lib/api';
+import { fetchInlayHints, fetchLspEligibility } from '../lib/api';
 
 /**
  * Whether go-to-click definition applies to the diff for `ref`.
@@ -13,6 +13,18 @@ export function lspEligibilityOptions(ref: string) {
     queryKey: ['lsp', 'eligibility', ref],
     queryFn: () => fetchLspEligibility(ref),
     staleTime: 30_000,
+    retry: false,
+  });
+}
+
+/** Inlay hints for one file of one ref, asked for by the file block that is actually rendering it. */
+export function inlayHintsOptions(ref: string, path: string, enabled: boolean) {
+  return queryOptions({
+    queryKey: ['lsp', 'inlay-hints', ref, path],
+    queryFn: () => fetchInlayHints(path, 'new'),
+    enabled,
+    // Hints for a given ref do not move under the reviewer; a revert re-renders the diff and refetches.
+    staleTime: 60_000,
     retry: false,
   });
 }

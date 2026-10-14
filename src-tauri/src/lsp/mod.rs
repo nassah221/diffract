@@ -27,6 +27,19 @@ pub struct Hover {
     pub value: String,
 }
 
+/// A hint drawn inside the code — a parameter name or an inferred type — as one ready-to-render string.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InlayHint {
+    /// 1-based, like `Location`.
+    pub line: u32,
+    /// 0-based offset into the line, in code space: the hint is inserted at this character.
+    pub character: u32,
+    pub label: String,
+    /// 1 = type, 2 = parameter, per the LSP spec.
+    pub kind: Option<u32>,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("server missing: {searched}")]

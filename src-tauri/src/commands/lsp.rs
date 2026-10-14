@@ -7,7 +7,7 @@ use tauri::State;
 
 use crate::core::diff::Source;
 use crate::core::AppError;
-use crate::lsp::{Hover, Location, Result};
+use crate::lsp::{Hover, InlayHint, Location, Result};
 use crate::state::AppState;
 
 #[derive(Serialize)]
@@ -160,6 +160,52 @@ pub async fn lsp_definition(
     session.ensure_open(&absolute).await?;
     // The frontend sends 1-based lines; LSP positions are 0-based.
     Ok(session.definition(&absolute, line - 1, character).await?)
+}
+
+#[tauri::command]
+pub async fn lsp_implementation(
+    state: State<'_, AppState>,
+    repo_path: String,
+    r#ref: String,
+    path: String,
+    side: String,
+    line: u32,
+    character: u32,
+    line_text: String,
+) -> Result<Vec<Location>, AppError> {
+    // Same gate, echo guard and lifetime as a definition — it is the same kind of question.
+    let (repo, absolute) = prepare_query(repo_path, r#ref, path, side, line, line_text).await?;
+    let session = state.lsp.session(&repo).await?;
+    session.ensure_open(&absolute).await?;
+    Ok(session.implementation(&absolute, line - 1, character).await?)
+}
+
+/// Inlay hints for one file: the parameter names and inferred types gopls draws inside the code.
+#[tauri::command]
+pub async fn lsp_inlay_hints(
+    state: State<'_, AppState>,
+    repo_path: String,
+    path: String,
+    side: String,
+) -> Result<Vec<InlayHint>, AppError> {
+    if side != "new" {
+        return Err(crate::lsp::Error::NotEligible {
+            reason: "only the new side of a diff is on disk".to_string(),
+        }
+        .into());
+    }
+    if !path.ends_with(".go") {
+        return Err(crate::lsp::Error::NotEligible {
+            reason: "only Go files are supported so far".to_string(),
+        }
+        .into());
+    }
+
+    let repo = PathBuf::from(repo_path);
+    let absolute = repo.join(&path);
+    let session = state.lsp.session(&repo).await?;
+    session.ensure_open(&absolute).await?;
+    Ok(session.inlay_hints(&absolute).await?)
 }
 
 #[tauri::command]

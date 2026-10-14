@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use tokio::sync::Mutex as AsyncMutex;
 
 use crate::lsp::client::Client;
-use crate::lsp::{canonical, path_from_uri, uri_from_path, Error, Hover, Location, Result};
+use crate::lsp::{canonical, path_from_uri, uri_from_path, Error, Hover, InlayHint, Location, Result};
 
 /// gopls answers `initialize` immediately (measured 0.03s) and loads packages lazily, so this only covers a
 /// server that never starts talking.
@@ -18,6 +18,24 @@ const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(10);
 /// which can include fetching its modules: a cold CLI run on a 390k-line repo measured 114s. A warm query is
 /// measured at 5-7ms, so this ceiling is only ever reached by genuine first-run work.
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
+
+/// gopls settings, in the flattened dotted form the server validates, sent both as `initializationOptions`
+/// and as the answer to its `workspace/configuration` pull.
+///
+/// Inlay hints are **off** in gopls by default (every hint kind defaults to false), so this is what makes the
+/// feature exist at all. `constantValues` and `ignoredError` are deliberately left off: in a review diff they
+/// add more noise than information.
+fn gopls_settings() -> Value {
+    json!({
+        "ui.inlayhint.hints": {
+            "parameterNames": true,
+            "assignVariableTypes": true,
+            "rangeVariableTypes": true,
+            "compositeLiteralFields": true,
+            "compositeLiteralTypes": true,
+        }
+    })
+}
 
 /// What the server has been told about a file, so a change on disk can be pushed instead of ignored.
 struct Opened {
@@ -39,7 +57,7 @@ impl Session {
         // gopls answers with resolved paths (`/tmp` comes back as `/private/tmp`), so the root must be
         // resolved too or every in-repo target looks like it lives outside the repo.
         let root = canonical(root);
-        let client = Client::spawn(bin, &root).await?;
+        let client = Client::spawn(bin, &root, gopls_settings()).await?;
 
         let root_uri = uri_from_path(&root);
         let name = root
@@ -50,17 +68,20 @@ impl Session {
             "processId": std::process::id(),
             "rootUri": root_uri,
             "workspaceFolders": [{ "uri": root_uri, "name": name }],
+            "initializationOptions": gopls_settings(),
             "capabilities": {
                 // gopls defaults to UTF-16, which is what JS string offsets already are; state it so a
                 // future gopls that negotiates UTF-8 cannot silently shift our columns.
                 "general": { "positionEncodings": ["utf-16"] },
                 "textDocument": {
                     "definition": { "linkSupport": true },
+                    "implementation": { "linkSupport": true },
                     // gopls would answer markdown by default; ask for it explicitly so the card can render a
                     // fenced signature block and the doc comment.
                     "hover": { "contentFormat": ["markdown", "plaintext"] },
+                    "inlayHint": {},
                 },
-                "workspace": { "workspaceFolders": true },
+                "workspace": { "workspaceFolders": true, "configuration": true },
             },
         });
         client.request("initialize", params, INITIALIZE_TIMEOUT).await?;
@@ -152,11 +173,21 @@ impl Session {
 
     /// `line`/`character` are 0-based UTF-16, the units LSP uses and the DOM already gives us.
     pub async fn definition(&self, absolute: &Path, line: u32, character: u32) -> Result<Vec<Location>> {
+        self.locations("textDocument/definition", absolute, line, character).await
+    }
+
+    /// Where the symbol is actually implemented. For an interface method this is the implementing methods, not
+    /// the interface declaration — which is what `definition` returns for the same position.
+    pub async fn implementation(&self, absolute: &Path, line: u32, character: u32) -> Result<Vec<Location>> {
+        self.locations("textDocument/implementation", absolute, line, character).await
+    }
+
+    async fn locations(&self, method: &str, absolute: &Path, line: u32, character: u32) -> Result<Vec<Location>> {
         let resolved = canonical(absolute);
         let result = self
             .client
             .request(
-                "textDocument/definition",
+                method,
                 json!({
                     "textDocument": { "uri": uri_from_path(&resolved) },
                     "position": { "line": line, "character": character },
@@ -165,6 +196,40 @@ impl Session {
             )
             .await?;
         Ok(locations_from_lsp(&self.root, &result))
+    }
+
+    /// Inlay hints for a whole file.
+    ///
+    /// The range must not reach past the file's last line: gopls answers `null` — not an error — for a range
+    /// that overshoots, which silently disables hints entirely. Bounding the range by the file's own length is
+    /// therefore load-bearing, not defensive.
+    pub async fn inlay_hints(&self, absolute: &Path) -> Result<Vec<InlayHint>> {
+        let resolved = canonical(absolute);
+        let path = resolved.clone();
+        let last_line = tokio::task::spawn_blocking(move || {
+            std::fs::read_to_string(&path).map(|text| text.lines().count() as u32)
+        })
+        .await
+        .map_err(|e| Error::Protocol(format!("read failed: {e}")))??;
+        if last_line == 0 {
+            return Ok(Vec::new());
+        }
+
+        let result = self
+            .client
+            .request(
+                "textDocument/inlayHint",
+                json!({
+                    "textDocument": { "uri": uri_from_path(&resolved) },
+                    "range": {
+                        "start": { "line": 0, "character": 0 },
+                        "end": { "line": last_line, "character": 0 },
+                    },
+                }),
+                REQUEST_TIMEOUT,
+            )
+            .await?;
+        Ok(inlay_hints_from_lsp(&result))
     }
 
     /// What the symbol at this position is: signature and doc comment. `None` when there is nothing there.
@@ -232,6 +297,36 @@ fn hover_from_lsp(value: &Value) -> Option<Hover> {
         }
         _ => None,
     }
+}
+
+/// `null` (nothing to show) and an empty list both mean no hints.
+fn inlay_hints_from_lsp(value: &Value) -> Vec<InlayHint> {
+    value
+        .as_array()
+        .map(|items| items.iter().filter_map(inlay_hint_from_lsp).collect())
+        .unwrap_or_default()
+}
+
+fn inlay_hint_from_lsp(value: &Value) -> Option<InlayHint> {
+    let position = value.get("position")?;
+    // `label` is a string, or parts that are concatenated (a part with a location is still just its text here).
+    let label = match value.get("label")? {
+        Value::String(text) => text.clone(),
+        Value::Array(parts) => parts
+            .iter()
+            .filter_map(|part| part.get("value").and_then(Value::as_str))
+            .collect::<String>(),
+        _ => return None,
+    };
+    if label.is_empty() {
+        return None;
+    }
+    Some(InlayHint {
+        line: position.get("line")?.as_u64()? as u32 + 1,
+        character: position.get("character")?.as_u64()? as u32,
+        label,
+        kind: value.get("kind").and_then(Value::as_u64).map(|kind| kind as u32),
+    })
 }
 
 /// `definition` may answer with one `Location`, an array of them, or `LocationLink`s (a server advertising
@@ -356,6 +451,36 @@ mod tests {
         assert!(hover.value.contains("func greet.Farewell(name string) string"), "{}", hover.value);
         assert!(hover.value.contains("Farewell says goodbye."), "{}", hover.value);
         assert!(hover.value.contains("https://pkg.go.dev/demo/greet#Farewell"), "{}", hover.value);
+    }
+
+    /// The shape gopls returns for hints (captured from a real request): a position, a label, and a kind.
+    #[test]
+    fn inlay_hints_are_read_from_both_label_forms() {
+        let response = json!([
+            { "position": { "line": 14, "character": 6 }, "label": " string", "kind": 1, "paddingLeft": true },
+            { "position": { "line": 13, "character": 21 },
+              "label": [{ "value": "Side" }, { "value": ": " }], "kind": 2 },
+        ]);
+        let hints = inlay_hints_from_lsp(&response);
+        assert_eq!(hints.len(), 2);
+        assert_eq!(hints[0].line, 15, "LSP lines are 0-based, the UI is 1-based");
+        assert_eq!(hints[0].character, 6);
+        assert_eq!(hints[0].label, " string");
+        assert_eq!(hints[0].kind, Some(1));
+        // Labelled parts are concatenated; the label is what gets drawn.
+        assert_eq!(hints[1].label, "Side: ");
+        assert_eq!(hints[1].kind, Some(2));
+    }
+
+    #[test]
+    fn inlay_hints_tolerate_absence_and_junk() {
+        assert!(inlay_hints_from_lsp(&Value::Null).is_empty());
+        assert!(inlay_hints_from_lsp(&json!([])).is_empty());
+        assert!(inlay_hints_from_lsp(&json!([{ "position": { "line": 0, "character": 0 } }])).is_empty());
+        // A label of parts with no text is dropped rather than drawn as an empty span.
+        assert!(inlay_hints_from_lsp(&json!([{ "position": { "line": 0, "character": 0 },
+                                                "label": [{ "location": { "uri": "file:///x" } }] }]))
+            .is_empty());
     }
 
     #[test]

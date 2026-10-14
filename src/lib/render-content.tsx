@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { DiffLine } from '@/lib/diff-parser';
+import type { LspInlayHint } from '@/lib/types';
 import { WordDiff } from '../components/diff/word-diff';
+import { spliceHints, type ContentPart } from '../features/lsp/inlay-hints';
 import type { SyntaxToken } from '../lib/syntax-token';
 
 /** Lines longer than this (minified code) show their start and a button for the rest. */
@@ -33,8 +35,9 @@ function TruncatedLine(props: { content: string }) {
   );
 }
 
-export function renderContent(line: DiffLine, syntaxTokens?: SyntaxToken[]) {
+export function renderContent(line: DiffLine, syntaxTokens?: SyntaxToken[], hints?: LspInlayHint[]) {
   if (line.wordDiff && line.wordDiff.length > 0) {
+    // Word-diff re-renders the line as its own parts, so hint offsets would not line up; hints are left off.
     return <WordDiff line={line} syntaxTokens={syntaxTokens} />;
   }
 
@@ -42,17 +45,25 @@ export function renderContent(line: DiffLine, syntaxTokens?: SyntaxToken[]) {
     return <TruncatedLine content={line.content} />;
   }
 
-  if (syntaxTokens && syntaxTokens.length > 0) {
-    return (
-      <>
-        {syntaxTokens.map((token, i) => (
-          <span key={i} style={token.color ? { color: token.color } : undefined}>
-            {token.text}
-          </span>
-        ))}
-      </>
-    );
-  }
+  const parts: ContentPart[] = syntaxTokens && syntaxTokens.length > 0
+    ? syntaxTokens.map((token) => ({ text: token.text, color: token.color }))
+    : [{ text: line.content || '\n' }];
 
-  return <span>{line.content || '\n'}</span>;
+  const withHints = hints && hints.length > 0 ? spliceHints(parts, hints) : parts;
+  return (
+    <>
+      {withHints.map((part, i) =>
+        part.hint ? (
+          // `data-lsp-hint` keeps this text out of every offset computation: it is not part of the line.
+          <span key={i} data-lsp-hint className="pl-px font-sans text-[11px] italic text-text-muted select-none">
+            {part.text}
+          </span>
+        ) : (
+          <span key={i} style={part.color ? { color: part.color } : undefined}>
+            {part.text}
+          </span>
+        ),
+      )}
+    </>
+  );
 }

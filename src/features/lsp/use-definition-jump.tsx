@@ -11,7 +11,7 @@ import { useCallback, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ContextMenu, MenuSeparator } from '../../components/ui/popover';
 import * as tauri from '../../lib/tauri';
-import { errorMessage, fetchDefinition } from '../../lib/api';
+import { errorMessage, fetchDefinition, fetchImplementation } from '../../lib/api';
 import { getFilePath } from '../../lib/diff-utils';
 import type { DiffFile } from '../../lib/diff-parser';
 import { symbolAtPoint } from '../../lib/symbol-position';
@@ -94,11 +94,14 @@ export function useDefinitionJump(options: { ref: string; files: DiffFile[]; ena
       event.preventDefault();
       event.stopPropagation();
       const at = { x: event.clientX, y: event.clientY };
+      // ⌘⌥-click asks for the implementation where ⌘-click asks for the declaration: on an interface method
+      // that is the difference between the interface and the methods that satisfy it.
+      const query = event.altKey ? fetchImplementation : fetchDefinition;
       try {
         // An empty line renders a phantom newline the caret can sit in, so the offset is bounded by the
         // line's real length before it is sent.
         const character = Math.max(0, Math.min(target.character, lineText.length));
-        const locations = await fetchDefinition({ ...target, ref, character, lineText });
+        const locations = await query({ ...target, ref, character, lineText });
         // Go there. The menu exists only to disambiguate, so one answer means no menu at all.
         if (locations.length === 1) {
           go(locations[0]);

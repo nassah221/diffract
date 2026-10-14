@@ -2,6 +2,7 @@ import type { DiffLine as DiffLineType } from '@/lib/diff-parser';
 import { cn } from '../../lib/cn';
 import { getLineBg } from '../../lib/diff-utils';
 import { renderContent } from '../../lib/render-content';
+import { useInlayHintsForLine } from '../../features/lsp/inlay-hints';
 import { diffLineKey } from '../../lib/find';
 import type { SyntaxToken } from '../../lib/syntax-token';
 import { CommentLineNumber } from '../comments/comment-line-number';
@@ -43,6 +44,8 @@ function getPrefixColor(type: string): string {
 
 export function DiffLine(props: DiffLineProps) {
   const { line, syntaxTokens, expanded, isSelected, onLineMouseDown, onLineMouseEnter, onCommentClick } = props;
+  // Hints belong to the new side: the working tree is what the server read.
+  const hints = useInlayHintsForLine(line.type === 'delete' ? -1 : (line.newLineNumber ?? -1));
 
   const side: CommentSide = line.type === 'delete' ? 'old' : 'new';
   const gutterBg = expanded ? 'bg-diff-expanded-gutter' : '';
@@ -76,7 +79,7 @@ export function DiffLine(props: DiffLineProps) {
         data-code-line={(line.type === 'delete' ? line.oldLineNumber : line.newLineNumber) ?? undefined}
         className={cn('px-3 code-cell', isSelected && 'bg-diff-comment-bg')}
       >
-        <span className="inline" data-find-line={diffLineKey(line)}>{renderContent(line, syntaxTokens)}</span>
+        <span className="inline" data-find-line={diffLineKey(line)}>{renderContent(line, syntaxTokens, hints)}</span>
       </td>
     </tr>
   );

@@ -42,7 +42,7 @@ pub struct Client {
 impl Client {
     /// Spawns `bin` with `root` as its working directory. Dies with the client (`kill_on_drop`), so a dropped
     /// session cannot leave a stray server behind.
-    pub async fn spawn(bin: &Path, root: &Path) -> Result<Self> {
+    pub async fn spawn(bin: &Path, root: &Path, settings: Value) -> Result<Self> {
         let mut child = Command::new(bin)
             .current_dir(root)
             .stdin(Stdio::piped())
@@ -75,6 +75,7 @@ impl Client {
             notifications.clone(),
             stdin.clone(),
             alive.clone(),
+            settings,
         ));
 
         Ok(Self {
@@ -163,6 +164,7 @@ async fn read_loop<R, W>(
     notifications: broadcast::Sender<Value>,
     writer: Arc<Mutex<W>>,
     alive: Arc<AtomicBool>,
+    settings: Value,
 ) where
     R: AsyncBufRead + Unpin,
     W: AsyncWrite + Unpin + Send + 'static,
@@ -171,15 +173,28 @@ async fn read_loop<R, W>(
         match read_frame(&mut reader).await {
             Ok(Some(message)) => match message.get("id") {
                 Some(id) if !id.is_null() => {
-                    if message.get("method").is_some() {
-                        // A server-to-client request (`window/workDoneProgress/create` and friends). We
-                        // advertise none of those capabilities, so answer "method not found" rather than
-                        // leaving the server waiting on a reply that will never come.
-                        let reply = json!({
-                            "jsonrpc": "2.0",
-                            "id": id,
-                            "error": { "code": METHOD_NOT_FOUND, "message": "method not supported" }
-                        });
+                    if let Some(method) = message.get("method").and_then(Value::as_str) {
+                        // gopls *pulls* its configuration: it asks, and whatever we answer is what it uses.
+                        // Saying "not supported" here leaves every gopls setting at its default, which is why
+                        // inlay hints (off by default) would never appear.
+                        let result = if method == "workspace/configuration" {
+                            let count = message
+                                .get("params")
+                                .and_then(|params| params.get("items"))
+                                .and_then(Value::as_array)
+                                .map(Vec::len)
+                                .unwrap_or(1);
+                            Value::Array(vec![settings.clone(); count])
+                        } else {
+                            let reply = json!({
+                                "jsonrpc": "2.0",
+                                "id": id,
+                                "error": { "code": METHOD_NOT_FOUND, "message": "method not supported" }
+                            });
+                            let _ = write_frame(&mut *writer.lock().await, &reply).await;
+                            continue;
+                        };
+                        let reply = json!({ "jsonrpc": "2.0", "id": id, "result": result });
                         let _ = write_frame(&mut *writer.lock().await, &reply).await;
                     } else if let Some(id) = id.as_i64() {
                         if let Some(sender) = pending.lock().remove(&id) {
@@ -264,6 +279,7 @@ mod tests {
             notifications,
             writer,
             Arc::new(AtomicBool::new(true)),
+            Value::Null,
         ))
     }
 

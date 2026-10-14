@@ -131,11 +131,15 @@ export function carryCurrent(previous: FindMatch | null, matches: FindMatch[]): 
   return matches.findIndex((match) => match.scope === previous.scope && match.key === previous.key && match.start === previous.start);
 }
 
-/** Text offsets of the rendered text of `element` (buttons such as "Show all" excluded), for building ranges. */
+/** Text offsets of the rendered text of `element`, for building ranges. Buttons ("Show all") and inlay hints
+ * (`[data-lsp-hint]`) are excluded: neither is part of the line, so offsets stay in code space. */
 export function textSegments(element: Element): { node: Text; start: number }[] {
   const segments: { node: Text; start: number }[] = [];
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
-    acceptNode: (node) => (node.parentElement?.closest('button') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    acceptNode: (node) =>
+      node.parentElement?.closest('button, [data-lsp-hint]')
+        ? NodeFilter.FILTER_REJECT
+        : NodeFilter.FILTER_ACCEPT,
   });
   let offset = 0;
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {

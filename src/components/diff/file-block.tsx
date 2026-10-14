@@ -30,6 +30,8 @@ import { DiffStats } from './diff-stats';
 import { Badge } from '../ui/badge';
 import { IconButton } from '../ui/icon-button';
 import { StatusBadge } from '../ui/status-badge';
+import { lspEligibilityOptions, inlayHintsOptions } from '../../queries/lsp';
+import { InlayHintsProvider } from '../../features/lsp/inlay-hints';
 import { PathLabel } from '../ui/path-label';
 import { HunkWithGap } from './hunk-with-gap';
 import { ThreadBadge } from '../ui/thread-badge';
@@ -206,6 +208,13 @@ function FileCard(props: FileCardProps) {
 
   const rendersLines = !collapsed && !heldBack && !loadingPatch && !file.isBinary && file.hunks.length > 0;
   const filePath = getFilePath(file);
+  // Inlay hints, once per file, for the card that is actually rendering it. The eligibility answer is the
+  // same query the page already made, so this costs nothing extra.
+  const hintsRef = baseRef ?? 'work';
+  const { data: hintsEligibility } = useQuery(lspEligibilityOptions(hintsRef));
+  const { data: inlayHints } = useQuery(
+    inlayHintsOptions(hintsRef, filePath, !!hintsEligibility?.eligible && !file.isBinary),
+  );
   const hunkShape = useMemo(() => file.hunks.map((hunk) => `${hunk.oldStart},${hunk.oldCount},${hunk.newStart},${hunk.newCount}`).join(';'), [file.hunks]);
   const [expansions, setExpansions] = useViewState<Map<string, GapExpansion>>(`diff:${baseRef ?? 'work'}:expanded:${filePath}:${hunkShape}`, () => new Map());
   const [loadingGap, setLoadingGap] = useState<{ id: string; direction: 'up' | 'down' | 'all' } | null>(null);
@@ -715,6 +724,7 @@ function FileCard(props: FileCardProps) {
             </div>
           ) : (
             <>
+            <InlayHintsProvider hints={inlayHints}>
             <table ref={tableRef} className="w-full border-collapse table-fixed">
               {viewMode === 'split' ? (
                 <colgroup>
@@ -807,6 +817,7 @@ function FileCard(props: FileCardProps) {
                 );
               })()}
             </table>
+            </InlayHintsProvider>
             <CodeScrollbar tableRef={tableRef} enabled={!wrapLines} />
             </>
           )}

@@ -3,6 +3,7 @@ import type { DiffHunk, DiffLine as DiffLineType } from '@/lib/diff-parser';
 import { cn } from '../../lib/cn';
 import { getLineBg, getChangeGroups } from '../../lib/diff-utils';
 import { renderContent } from '../../lib/render-content';
+import { useInlayHintsForLine } from '../../features/lsp/inlay-hints';
 import type { SyntaxToken } from '../../lib/syntax-token';
 import type { CommentThread as CommentThreadType, CommentAuthor, CommentSide, LineSelection, LineRenderProps, SubmitOptions } from '../comments/types';
 import { HunkHeader, type ExpandControls } from './hunk-header';
@@ -116,6 +117,8 @@ function SplitCell(props: {
 }) {
   const { line, side, syntaxMap, expanded, isSelected, onMouseDown, onMouseEnter, onCommentClick } = props;
   const [contentHovered, setContentHovered] = useState(false);
+  // Hints come from the working tree, so only the new side (the right column) shows them.
+  const hintsForCell = useInlayHintsForLine(side === 'right' && line ? (line.newLineNumber ?? -1) : -1);
 
   if (!line) {
     return (
@@ -152,7 +155,7 @@ function SplitCell(props: {
         onMouseEnter={() => setContentHovered(true)}
         onMouseLeave={() => setContentHovered(false)}
       >
-        <span className="inline" data-find-line={syntaxKey}>{renderContent(line, tokens)}</span>
+        <span className="inline" data-find-line={syntaxKey}>{renderContent(line, tokens, hintsForCell)}</span>
       </td>
     </>
   );

@@ -3,7 +3,7 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import type { CommentThread, CommentAuthor, CommentSide, Comment, SubmitOptions } from '../components/comments/types';
 import * as tauri from './tauri';
-import type { DiffFileSummary, LspEligibility, LspHover, LspLocation, LspStatus, PullRequest, Thread, Comment as BackendComment, TreeEntry } from './types';
+import type { DiffFileSummary, LspEligibility, LspHover, LspInlayHint, LspLocation, LspStatus, PullRequest, Thread, Comment as BackendComment, TreeEntry } from './types';
 import { TREE_REF } from './types';
 
 dayjs.extend(relativeTime);
@@ -247,6 +247,30 @@ export function fetchDefinition(input: {
 
 export function fetchLspStatus(): Promise<LspStatus> {
   return tauri.lspStatus(getRepoPath());
+}
+
+/**
+ * Where the symbol is actually implemented. On an interface method this is the implementing methods, where
+ * `fetchDefinition` returns the interface declaration.
+ */
+export function fetchImplementation(input: {
+  ref: string;
+  path: string;
+  side: 'old' | 'new';
+  line: number;
+  character: number;
+  lineText: string;
+}): Promise<LspLocation[]> {
+  const { ref, path, side, line, character, lineText } = input;
+  return tauri.lspImplementation(getRepoPath(), ref || 'work', path, side, line, character, lineText);
+}
+
+/**
+ * Inlay hints for a whole file: parameter names and inferred types, positioned in code space. Cheap after the
+ * package is loaded, so one call per file the review is actually looking at.
+ */
+export function fetchInlayHints(path: string, side: 'old' | 'new'): Promise<LspInlayHint[]> {
+  return tauri.lspInlayHints(getRepoPath(), path, side);
 }
 
 /**

@@ -601,6 +601,14 @@ const handlers: Record<string, (args: Args) => unknown> = {
     value:
       '```go\nfunc greeter.New(name string) greeter.Greeter\n```\n\n---\n\nNew builds a Greeter.\n\n\n---\n\n[`greeter.New` on pkg.go.dev](https://pkg.go.dev/fixture/internal/greeter#New)',
   }),
+  // gopls's parameter-name hints for `fmt.Println(greeting())`, in code offsets.
+  lsp_inlay_hints: () => [
+    { line: 8, character: 13, label: 'a...:', kind: 2 },
+    { line: 8, character: 22, label: 'name:', kind: 2 },
+  ],
+  lsp_implementation: () => [
+    { path: 'cmd/impl.go', insideRepo: true, line: 11, startCharacter: 16, endCharacter: 20 },
+  ],
   set_diff_ignore_rules: (args) => {
     settings.set(`diffignore:${String(args.repoPath)}`, String(args.rules));
     return null;

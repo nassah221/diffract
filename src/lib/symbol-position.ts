@@ -10,7 +10,7 @@
  * Offsets are UTF-16 code units: what `Text.data.length` counts, and what LSP positions use.
  */
 
-import { textSegments } from './find';
+import { rangeFor, textSegments } from './find';
 
 export type SymbolSide = 'old' | 'new';
 
@@ -118,26 +118,9 @@ export function placeCard(
 
 /**
  * The DOM range for `[start, end)` of a cell's text, across the token spans it is split into. Used to measure a
- * symbol (so a card can sit still against it) and to highlight it.
+ * symbol (so a card can sit still against it) and to highlight it. Inlay hints are skipped by `textSegments`,
+ * so these offsets are code offsets.
  */
 export function rangeForOffsets(cell: HTMLElement, start: number, end: number): Range | null {
-  const segments = textSegments(cell);
-  const locate = (offset: number) => {
-    for (const segment of segments) {
-      if (offset <= segment.start + segment.node.data.length) {
-        return { node: segment.node, offset: Math.max(0, offset - segment.start) };
-      }
-    }
-    return null;
-  };
-
-  const from = locate(start);
-  const to = locate(end);
-  if (!from || !to) {
-    return null;
-  }
-  const range = document.createRange();
-  range.setStart(from.node, from.offset);
-  range.setEnd(to.node, to.offset);
-  return range;
+  return rangeFor(textSegments(cell), start, end);
 }
