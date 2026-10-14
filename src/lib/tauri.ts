@@ -23,6 +23,7 @@ import type {
   GitStatus,
   GithubAuthStatus,
   LspEligibility,
+  LspHover,
   LspLocation,
   LspStatus,
   NewThread,
@@ -93,6 +94,15 @@ export const lspDefinition = (
   character: number,
   lineText: string,
 ) => invoke<LspLocation[]>('lsp_definition', { repoPath, ref, path, side, line, character, lineText });
+export const lspHover = (
+  repoPath: string,
+  ref: string,
+  path: string,
+  side: 'old' | 'new',
+  line: number,
+  character: number,
+  lineText: string,
+) => invoke<LspHover | null>('lsp_hover', { repoPath, ref, path, side, line, character, lineText });
 export const lspStatus = (repoPath: string) => invoke<LspStatus>('lsp_status', { repoPath });
 export const reportIssue = () => invoke<void>('report_issue');
 export const takeOpenRequests = () => invoke<OpenRequest[]>('take_open_requests');

@@ -3,7 +3,7 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import type { CommentThread, CommentAuthor, CommentSide, Comment, SubmitOptions } from '../components/comments/types';
 import * as tauri from './tauri';
-import type { DiffFileSummary, LspEligibility, LspLocation, LspStatus, PullRequest, Thread, Comment as BackendComment, TreeEntry } from './types';
+import type { DiffFileSummary, LspEligibility, LspHover, LspLocation, LspStatus, PullRequest, Thread, Comment as BackendComment, TreeEntry } from './types';
 import { TREE_REF } from './types';
 
 dayjs.extend(relativeTime);
@@ -247,6 +247,22 @@ export function fetchDefinition(input: {
 
 export function fetchLspStatus(): Promise<LspStatus> {
   return tauri.lspStatus(getRepoPath());
+}
+
+/**
+ * What the symbol at this position is. Same gate and echo guard as a definition, so a card and a click can
+ * never disagree about what they are willing to ask.
+ */
+export function fetchHover(input: {
+  ref: string;
+  path: string;
+  side: 'old' | 'new';
+  line: number;
+  character: number;
+  lineText: string;
+}): Promise<LspHover | null> {
+  const { ref, path, side, line, character, lineText } = input;
+  return tauri.lspHover(getRepoPath(), ref || 'work', path, side, line, character, lineText);
 }
 
 export async function fetchOverview(): Promise<Overview> {

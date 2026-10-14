@@ -45,6 +45,8 @@ import { Workspace } from '../layout/title-bar';
 import { ReviewStateProvider } from '../../features/review/review-state';
 import { lspEligibilityOptions } from '../../queries/lsp';
 import { useDefinitionJump } from '../../features/lsp/use-definition-jump';
+import { useSymbolHover } from '../../features/lsp/use-symbol-hover';
+import { HoverCard } from '../../features/lsp/hover-card';
 import { useViewedFiles } from '../../hooks/use-viewed-files';
 import type { SinceViewedInfo } from './since-viewed';
 import { useGitHubPr, useOwnPr } from '../../hooks/use-repo-state';
@@ -150,6 +152,12 @@ export function DiffPage(props: DiffPageProps) {
   // handler stays inert unless it can.
   const { data: lspEligibility } = useQuery(lspEligibilityOptions(refParam));
   const definitionJump = useDefinitionJump({
+    ref: refParam,
+    files: diff?.files ?? [],
+    enabled: !!lspEligibility?.eligible,
+  });
+  // Resting on a symbol describes it. Same gate as the click, so the two can never disagree.
+  const symbolHover = useSymbolHover({
     ref: refParam,
     files: diff?.files ?? [],
     enabled: !!lspEligibility?.eligible,
@@ -709,8 +717,14 @@ export function DiffPage(props: DiffPageProps) {
 
   return (
     <ReviewStateProvider sessionId={reviewsEnabled ? sessionId : null} prMode={!!githubDetails && !ownPr} ownPrNumber={ownPr && githubDetails && refParam === prDiffRef(githubDetails) ? githubDetails.prNumber : null}>
-    <div className="flex flex-col h-screen bg-frame text-text font-sans" onMouseDown={definitionJump.onMouseDown}>
+    <div
+      className="flex flex-col h-screen bg-frame text-text font-sans"
+      onMouseDown={definitionJump.onMouseDown}
+      onMouseMove={symbolHover.onMouseMove}
+      onMouseLeave={symbolHover.onMouseLeave}
+    >
       {definitionJump.menu}
+      <HoverCard card={symbolHover.card} cardRef={symbolHover.cardRef} />
       <Toolbar
         theme={theme}
         onToggleTheme={toggleTheme}

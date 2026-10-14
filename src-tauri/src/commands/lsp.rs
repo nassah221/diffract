@@ -7,7 +7,7 @@ use tauri::State;
 
 use crate::core::diff::Source;
 use crate::core::AppError;
-use crate::lsp::{Location, Result};
+use crate::lsp::{Hover, Location, Result};
 use crate::state::AppState;
 
 #[derive(Serialize)]
@@ -94,17 +94,17 @@ pub async fn lsp_eligible(repo_path: String, r#ref: String) -> Result<Eligibilit
     })
 }
 
-#[tauri::command]
-pub async fn lsp_definition(
-    state: State<'_, AppState>,
+/// The gate and the staleness check, in one blocking hop. Returns the canonical repo root and the absolute
+/// path to ask the server about. Shared by every query so a click and a hover can never disagree about what
+/// they are allowed to ask.
+async fn prepare_query(
     repo_path: String,
     r#ref: String,
     path: String,
     side: String,
     line: u32,
-    character: u32,
     line_text: String,
-) -> Result<Vec<Location>, AppError> {
+) -> Result<(PathBuf, PathBuf), AppError> {
     if side != "new" {
         return Err(crate::lsp::Error::NotEligible {
             reason: "only the new side of a diff is on disk".to_string(),
@@ -121,12 +121,10 @@ pub async fn lsp_definition(
         .into());
     }
 
-    // One blocking hop for everything that touches git or the filesystem, and the staleness check before any
-    // position is trusted: the diff can be showing an index blob or a commit while gopls reads the disk.
     let repo = PathBuf::from(repo_path);
-    let relative = path.clone();
-    let expected = line_text.clone();
-    let (repo, absolute) = crate::commands::repo::blocking(move || {
+    let relative = path;
+    let expected = line_text;
+    crate::commands::repo::blocking(move || {
         let plan = crate::core::diff::plan(&repo, &r#ref)?;
         let head = crate::core::git::head_sha(&repo)?;
         if !is_eligible(&plan.new, &head) {
@@ -141,14 +139,46 @@ pub async fn lsp_definition(
         }
         Ok::<(PathBuf, PathBuf), AppError>((repo.clone(), repo.join(&relative)))
     })
-    .await?;
+    .await
+}
 
+#[tauri::command]
+pub async fn lsp_definition(
+    state: State<'_, AppState>,
+    repo_path: String,
+    r#ref: String,
+    path: String,
+    side: String,
+    line: u32,
+    character: u32,
+    line_text: String,
+) -> Result<Vec<Location>, AppError> {
+    let (repo, absolute) = prepare_query(repo_path, r#ref, path, side, line, line_text).await?;
     let session = state.lsp.session(&repo).await?;
     // Keep the file the server will resolve against current: the echo guard above already proved this line is
     // what is on disk, and pushing it covers the case where the file changed since the last click.
     session.ensure_open(&absolute).await?;
     // The frontend sends 1-based lines; LSP positions are 0-based.
     Ok(session.definition(&absolute, line - 1, character).await?)
+}
+
+#[tauri::command]
+pub async fn lsp_hover(
+    state: State<'_, AppState>,
+    repo_path: String,
+    r#ref: String,
+    path: String,
+    side: String,
+    line: u32,
+    character: u32,
+    line_text: String,
+) -> Result<Option<Hover>, AppError> {
+    // Same gate and echo guard as a click: a hover is a query about the working tree too.
+    // ponytail: this costs a git plan per hover; skip it here if the hover path ever shows up in a profile.
+    let (repo, absolute) = prepare_query(repo_path, r#ref, path, side, line, line_text).await?;
+    let session = state.lsp.session(&repo).await?;
+    session.ensure_open(&absolute).await?;
+    Ok(session.hover(&absolute, line - 1, character).await?)
 }
 
 #[tauri::command]

@@ -18,6 +18,15 @@ pub struct Location {
     pub end_character: u32,
 }
 
+/// What a symbol is, as a language server reports it for a position: typically a signature and its doc
+/// comment. `kind` is what the server sent (`markdown` for gopls), so the UI can decide how to render it.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Hover {
+    pub kind: String,
+    pub value: String,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("server missing: {searched}")]

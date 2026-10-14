@@ -27,6 +27,12 @@ export interface LspLocation {
   endCharacter: number;
 }
 
+/** A symbol's signature and doc comment, as the language server reports it (`markdown` for gopls). */
+export interface LspHover {
+  kind: string;
+  value: string;
+}
+
 export interface LspStatus {
   serverFound: boolean;
   serverPath: string | null;

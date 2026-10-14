@@ -595,6 +595,12 @@ const handlers: Record<string, (args: Args) => unknown> = {
   lsp_definition: () => [
     { path: 'src/utils/format.ts', insideRepo: true, line: 10, startCharacter: 0, endCharacter: 6 },
   ],
+  // The exact markdown shape gopls returns, so the card renders what a real hover produces.
+  lsp_hover: () => ({
+    kind: 'markdown',
+    value:
+      '```go\nfunc greeter.New(name string) greeter.Greeter\n```\n\n---\n\nNew builds a Greeter.\n\n\n---\n\n[`greeter.New` on pkg.go.dev](https://pkg.go.dev/fixture/internal/greeter#New)',
+  }),
   set_diff_ignore_rules: (args) => {
     settings.set(`diffignore:${String(args.repoPath)}`, String(args.rules));
     return null;

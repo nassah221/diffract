@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use tokio::sync::Mutex as AsyncMutex;
 
 use crate::lsp::client::Client;
-use crate::lsp::{canonical, path_from_uri, uri_from_path, Error, Location, Result};
+use crate::lsp::{canonical, path_from_uri, uri_from_path, Error, Hover, Location, Result};
 
 /// gopls answers `initialize` immediately (measured 0.03s) and loads packages lazily, so this only covers a
 /// server that never starts talking.
@@ -54,7 +54,12 @@ impl Session {
                 // gopls defaults to UTF-16, which is what JS string offsets already are; state it so a
                 // future gopls that negotiates UTF-8 cannot silently shift our columns.
                 "general": { "positionEncodings": ["utf-16"] },
-                "textDocument": { "definition": { "linkSupport": true } },
+                "textDocument": {
+                    "definition": { "linkSupport": true },
+                    // gopls would answer markdown by default; ask for it explicitly so the card can render a
+                    // fenced signature block and the doc comment.
+                    "hover": { "contentFormat": ["markdown", "plaintext"] },
+                },
                 "workspace": { "workspaceFolders": true },
             },
         });
@@ -162,8 +167,70 @@ impl Session {
         Ok(locations_from_lsp(&self.root, &result))
     }
 
+    /// What the symbol at this position is: signature and doc comment. `None` when there is nothing there.
+    pub async fn hover(&self, absolute: &Path, line: u32, character: u32) -> Result<Option<Hover>> {
+        let resolved = canonical(absolute);
+        let result = self
+            .client
+            .request(
+                "textDocument/hover",
+                json!({
+                    "textDocument": { "uri": uri_from_path(&resolved) },
+                    "position": { "line": line, "character": character },
+                }),
+                REQUEST_TIMEOUT,
+            )
+            .await?;
+        Ok(hover_from_lsp(&result))
+    }
+
     pub async fn shutdown(&self) {
         self.client.shutdown().await;
+    }
+}
+
+/// `contents` is a string, a `{ kind, value }` object, or an array of those (the older `MarkedString` form).
+/// A `null` result means the server has nothing to say about that position.
+fn hover_from_lsp(value: &Value) -> Option<Hover> {
+    match value.get("contents")? {
+        Value::String(text) => Some(Hover {
+            kind: "plaintext".to_string(),
+            value: text.clone(),
+        }),
+        Value::Object(_) => {
+            let contents = value.get("contents")?;
+            Some(Hover {
+                kind: contents
+                    .get("kind")
+                    .and_then(Value::as_str)
+                    .unwrap_or("plaintext")
+                    .to_string(),
+                value: contents.get("value")?.as_str()?.to_string(),
+            })
+        }
+        Value::Array(parts) => {
+            let mut markdown = String::new();
+            for part in parts {
+                match part {
+                    Value::String(text) => {
+                        markdown.push_str(text);
+                        markdown.push('\n');
+                    }
+                    Value::Object(_) => {
+                        let language = part.get("language").and_then(Value::as_str).unwrap_or("");
+                        if let Some(text) = part.get("value").and_then(Value::as_str) {
+                            markdown.push_str(&format!("```{language}\n{text}\n```\n"));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            (!markdown.is_empty()).then(|| Hover {
+                kind: "markdown".to_string(),
+                value: markdown,
+            })
+        }
+        _ => None,
     }
 }
 
@@ -271,6 +338,38 @@ mod tests {
         let root = std::path::Path::new("/repo");
         assert!(locations_from_lsp(root, &Value::Null).is_empty());
         assert!(locations_from_lsp(root, &json!({ "unexpected": true })).is_empty());
+    }
+
+    /// The exact shape gopls returns (captured from a real hover): markdown with a fenced signature, the doc
+    /// comment, and a pkg.go.dev link.
+    #[test]
+    fn hover_markdown_is_read_intact() {
+        let response = json!({
+            "contents": {
+                "kind": "markdown",
+                "value": "```go\nfunc greet.Farewell(name string) string\n```\n\n---\n\nFarewell says goodbye.\n\n\n---\n\n[`greet.Farewell` on pkg.go.dev](https://pkg.go.dev/demo/greet#Farewell)"
+            },
+            "range": { "start": { "line": 10, "character": 19 }, "end": { "line": 10, "character": 27 } }
+        });
+        let hover = hover_from_lsp(&response).expect("hover");
+        assert_eq!(hover.kind, "markdown");
+        assert!(hover.value.contains("func greet.Farewell(name string) string"), "{}", hover.value);
+        assert!(hover.value.contains("Farewell says goodbye."), "{}", hover.value);
+        assert!(hover.value.contains("https://pkg.go.dev/demo/greet#Farewell"), "{}", hover.value);
+    }
+
+    #[test]
+    fn hover_handles_the_other_shapes_and_absence() {
+        // A plain string, and the older MarkedString array.
+        let plain = json!({ "contents": "func main()" });
+        assert_eq!(hover_from_lsp(&plain).unwrap().kind, "plaintext");
+        let marked = json!({ "contents": [{ "language": "go", "value": "func main()" }, "doc"] });
+        let hover = hover_from_lsp(&marked).unwrap();
+        assert!(hover.value.contains("```go\nfunc main()\n```"), "{}", hover.value);
+        assert!(hover.value.contains("doc"), "{}", hover.value);
+        // Nothing at that position, and a shape we do not recognise: both mean "no card".
+        assert!(hover_from_lsp(&Value::Null).is_none());
+        assert!(hover_from_lsp(&json!({ "contents": 7 })).is_none());
     }
 
     #[test]

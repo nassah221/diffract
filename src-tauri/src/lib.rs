@@ -216,6 +216,7 @@ pub fn run() {
             commands::files::read_file_base64,
             commands::lsp::lsp_eligible,
             commands::lsp::lsp_definition,
+            commands::lsp::lsp_hover,
             commands::lsp::lsp_status,
             commands::comments::get_session,
             commands::comments::list_threads,
