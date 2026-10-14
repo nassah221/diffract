@@ -82,7 +82,7 @@ export function CheckoutGuardDialog() {
             <h3 className="text-sm font-semibold text-text">{title}</h3>
             <p className="mt-1 text-xs leading-relaxed text-text-secondary">
               You have {summary(guard.status)}. Switching to {target} would mix them with {isBack ? 'that branch' : 'the pull request'}, so
-              Diffity won’t switch while they are there.
+              Diffract won’t switch while they are there.
             </p>
             <ul className="mt-3 space-y-1.5 text-xs leading-relaxed text-text-secondary">
               <li>
@@ -90,7 +90,7 @@ export function CheckoutGuardDialog() {
                 <code className="rounded bg-bg-tertiary px-1 font-mono text-[11px]">git stash push --include-untracked</code>.
                 {isBack
                   ? ' The stash keeps these changes safe; get them back later with git stash pop.'
-                  : ' When you choose “Back to your branch”, Diffity puts the changes back for you.'}
+                  : ' When you choose “Back to your branch”, Diffract puts the changes back for you.'}
               </li>
               <li>
                 <span className="font-medium text-text">Cancel</span> leaves everything as it is, so you can commit or stash yourself.

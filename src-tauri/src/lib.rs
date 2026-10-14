@@ -26,7 +26,7 @@ use tauri_plugin_deep_link::DeepLinkExt;
 
 pub use state::AppState;
 
-/// The "Diffity Dev" test build: built with `DIFFITY_CHANNEL=dev` and tauri.dev.conf.json, installed next to
+/// The "Diffract Dev" test build: built with `DIFFITY_CHANNEL=dev` and tauri.dev.conf.json, installed next to
 /// the release with its own data, link scheme and command, and no self-updates.
 pub fn dev_build() -> bool {
     option_env!("DIFFITY_CHANNEL") == Some("dev")
@@ -47,7 +47,7 @@ fn mcp_binary_path() -> std::path::PathBuf {
 fn init_state(app: &tauri::App) -> anyhow::Result<AppState> {
     let data_dir = app.path().app_data_dir()?;
     std::fs::create_dir_all(&data_dir)?;
-    let store = Arc::new(Store::open(data_dir.join("diffity.db")).map_err(|e| anyhow::anyhow!(e))?);
+    let store = Arc::new(Store::open(data_dir.join("diffract.db")).map_err(|e| anyhow::anyhow!(e))?);
     let agents = Arc::new(AgentManager::new(store.clone(), data_dir.clone(), mcp_binary_path()));
     let handle = app.handle().clone();
     agents.on_threads_changed(Arc::new(move |session_id: &str| {

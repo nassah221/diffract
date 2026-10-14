@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Diffity Dev",
-  "identifier": "com.diffity.app.dev",
+  "productName": "Diffract Dev",
+  "identifier": "com.diffract.app.dev",
   "app": {
     "windows": [
       {
         "label": "main",
-        "title": "Diffity Dev",
+        "title": "Diffract Dev",
         "width": 1400,
         "height": 900,
         "minWidth": 900,
@@ -20,7 +20,7 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["diffity-dev"]
+        "schemes": ["diffract-dev"]
       }
     }
   },

@@ -159,7 +159,7 @@ function AccountCard(props: { status: GithubAuthStatus; onSwitch: () => void }) 
         <InlineConfirm
           message={
             status.source === 'gh'
-              ? 'Sign out of Diffity? Your GitHub CLI login is not touched.'
+              ? 'Sign out of Diffract? Your GitHub CLI login is not touched.'
               : 'Sign out and remove the token from the keychain?'
           }
           confirmLabel="Sign out"

@@ -33,7 +33,7 @@ function repoName(repoPath: string) {
 
 function useWindowTitle(repoPath: string) {
   useEffect(() => {
-    const name = repoPath.split('/').filter(Boolean).pop() ?? 'Diffity';
+    const name = repoPath.split('/').filter(Boolean).pop() ?? 'Diffract';
     document.title = name;
     if (!isTauri) {
       return;

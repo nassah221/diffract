@@ -52,7 +52,7 @@ async function openRequest(request: OpenRequest, navigate: NavigateFunction) {
 }
 
 /**
- * `diffity://open` links (the `diffity` command, agents) queue up in the app until a window takes them. The main
+ * `diffract://open` links (the `diffract` command, agents) queue up in the app until a window takes them. The main
  * window checks on load, for the link that launched the app; after that the app pokes the window it picked.
  */
 export function useOpenLinks() {

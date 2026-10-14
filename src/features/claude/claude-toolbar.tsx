@@ -133,7 +133,7 @@ export function ClaudeToolbar(props: ClaudeToolbarProps) {
         ref={anchorRef}
         onClick={() => setOpen(!open)}
         className={cn(buttonClaude, open && 'bg-claude/16')}
-        title={prMode ? `${agent.short} reviews this pull request and leaves its comments in Diffity only (marked ${agent.short}). Use “Add to my review” on any you want to post to GitHub.` : `Ask ${agent.short} to review these changes and leave comments, or to make a change for you.`}
+        title={prMode ? `${agent.short} reviews this pull request and leaves its comments in Diffract only (marked ${agent.short}). Use “Add to my review” on any you want to post to GitHub.` : `Ask ${agent.short} to review these changes and leave comments, or to make a change for you.`}
         aria-expanded={open}
       >
         <SparkleIcon size="md" />

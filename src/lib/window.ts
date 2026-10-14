@@ -18,7 +18,7 @@ export async function openRepoInNewWindow(path: string, extra?: Record<string, s
     await existing.setFocus();
     return;
   }
-  const name = path.split('/').filter(Boolean).pop() ?? 'Diffity';
+  const name = path.split('/').filter(Boolean).pop() ?? 'Diffract';
   new WebviewWindow(label, {
     url: `index.html#${repoRoute(path, extra, page)}`,
     title: name,

@@ -42,7 +42,7 @@ export function AgentsCard() {
         <SparkleIcon className="w-4 h-4 mt-0.5 shrink-0 text-claude" />
         <div className="min-w-0 flex-1">
           <div className="text-[13px] font-medium text-text">No coding agent found</div>
-          <p className="mt-0.5 text-xs text-text-secondary">Diffity works without one. To have an agent review diffs and fix comments, install one and sign in:</p>
+          <p className="mt-0.5 text-xs text-text-secondary">Diffract works without one. To have an agent review diffs and fix comments, install one and sign in:</p>
           <ul className="mt-1.5 flex flex-col gap-1">
             {AGENTS.map((agent) => (
               <li key={agent.id} className="text-xs text-text-secondary">

@@ -65,15 +65,15 @@ export function hasDraft(sessionId: string | null, key: string): boolean {
 function destinationHint(input: { reviewMode: boolean; prNumber: number | null; mentioned: string | null; fallback: string; handle: string; ownPr?: number | null }): string {
   const { reviewMode, prNumber, mentioned, fallback, handle, ownPr } = input;
   if (ownPr) {
-    return mentioned ? `A note on your PR #${ownPr}, kept in Diffity · ${mentioned} will reply` : `A note for ${fallback} on your PR #${ownPr}, kept in Diffity`;
+    return mentioned ? `A note on your PR #${ownPr}, kept in Diffract · ${mentioned} will reply` : `A note for ${fallback} on your PR #${ownPr}, kept in Diffract`;
   }
   if (reviewMode && prNumber) {
     return mentioned ? `Goes into your review on PR #${prNumber} · ${mentioned} will reply` : `Goes into your review on PR #${prNumber}, posted when you submit`;
   }
   if (mentioned) {
-    return `Saved in Diffity · ${mentioned} will reply`;
+    return `Saved in Diffract · ${mentioned} will reply`;
   }
-  return `Saved in Diffity only · @${handle} asks ${fallback}`;
+  return `Saved in Diffract only · @${handle} asks ${fallback}`;
 }
 
 const primaryClass = buttonPrimary;
@@ -230,7 +230,7 @@ export function CommentForm(props: CommentFormProps) {
       </div>
       {review.enabled && replyAgent && !mentionsAgent(body) && (
         <div className="px-3 pb-2 text-xs text-text-muted" title={`${modKey}Enter submits`}>
-          {sendToClaude ? `${replyAgent} will reply` : 'Saved in Diffity only'}
+          {sendToClaude ? `${replyAgent} will reply` : 'Saved in Diffract only'}
           {' · '}
           <button
             type="button"

@@ -312,7 +312,7 @@ export function AgentsPane() {
           )}
         >
           {installed.length === 0 && (
-            <p className="pt-1.5 text-[11.5px] leading-snug text-text-muted">Install one and sign in, or point Diffity to it.</p>
+            <p className="pt-1.5 text-[11.5px] leading-snug text-text-muted">Install one and sign in, or point Diffract to it.</p>
           )}
           {missing.map((meta) => (
             <MissingAgentRow key={meta.id} meta={meta} agent={info(meta)} onRedetect={redetect} />

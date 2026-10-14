@@ -79,7 +79,7 @@ function OriginBadge(props: { thread: CommentThreadType; prMode: boolean; prUrl:
   const first = thread.comments[0];
   if (first?.author.type === 'agent') {
     const name = agentByName(first.author.name)?.short ?? first.author.name;
-    return <span className={cn(base, 'bg-claude/12 text-claude')} title={`Written by ${name}, kept in Diffity`}>{name}</span>;
+    return <span className={cn(base, 'bg-claude/12 text-claude')} title={`Written by ${name}, kept in Diffract`}>{name}</span>;
   }
   if (thread.pending) {
     return (
@@ -102,7 +102,7 @@ function OriginBadge(props: { thread: CommentThreadType; prMode: boolean; prUrl:
   if (!prMode) {
     return null;
   }
-  return <span className={cn(base, 'bg-fill text-text-secondary')} title="Only in Diffity; not part of your GitHub review">Local</span>;
+  return <span className={cn(base, 'bg-fill text-text-secondary')} title="Only in Diffract; not part of your GitHub review">Local</span>;
 }
 
 export function ThreadCard(props: ThreadCardProps) {

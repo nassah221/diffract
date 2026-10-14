@@ -43,7 +43,7 @@ function summary(project: ProjectData): string {
 
 const REMOVED = [
   'Comments and replies, including resolved ones and unsent drafts',
-  'Reviews you finished in Diffity and agents’ review comments',
+  'Reviews you finished in Diffract and agents’ review comments',
   'Files marked as viewed',
   'Agent chat history',
 ];
@@ -194,10 +194,10 @@ export function DataPane() {
     try {
       await tauri.resetAllData();
       await afterDelete(null);
-      toast.success('Diffity was reset', { description: 'Comments, chats and recent projects are gone. Your settings were kept.' });
+      toast.success('Diffract was reset', { description: 'Comments, chats and recent projects are gone. Your settings were kept.' });
       setResetting(false);
     } catch (error) {
-      toast.error('Could not reset Diffity', { description: tauri.errorMessage(error) });
+      toast.error('Could not reset Diffract', { description: tauri.errorMessage(error) });
     } finally {
       setBusy(false);
     }
@@ -207,7 +207,7 @@ export function DataPane() {
     <PreferencesPane>
       <PreferencesGroup label="Projects">
         <p className="pt-1.5 pb-1 text-[11.5px] leading-snug text-text-muted">
-          Diffity keeps comments, reviews and Claude chats on this Mac, per project. Clearing a project deletes them here only.
+          Diffract keeps comments, reviews and Claude chats on this Mac, per project. Clearing a project deletes them here only.
         </p>
         {isLoading && <div className="py-2.5 text-xs text-text-muted">Loading…</div>}
         {!isLoading && withData.length === 0 && <div className="py-2.5 text-xs text-text-muted">No comments or chats stored yet.</div>}
@@ -235,7 +235,7 @@ export function DataPane() {
       <PreferencesGroup label="Reset">
         <div className="flex items-center gap-4 py-2.5">
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="text-[13px] text-text">Reset Diffity</span>
+            <span className="text-[13px] text-text">Reset Diffract</span>
             <p className="text-[11.5px] leading-snug text-text-muted">
               Deletes the data of every project and the recent projects list. Settings and sign-ins are kept.
             </p>
@@ -263,10 +263,10 @@ export function DataPane() {
       )}
       {resetting && (
         <DataDialog
-          title="Reset Diffity?"
-          intro="Deletes what Diffity stored for every project, and empties the recent projects list. Diffity then starts fresh, with your settings in place."
+          title="Reset Diffract?"
+          intro="Deletes what Diffract stored for every project, and empties the recent projects list. Diffract then starts fresh, with your settings in place."
           removed={[...REMOVED, 'The recent projects list']}
-          confirmLabel="Reset Diffity"
+          confirmLabel="Reset Diffract"
           typeToConfirm="reset"
           busy={busy}
           onConfirm={() => void reset()}

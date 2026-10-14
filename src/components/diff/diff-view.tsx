@@ -105,7 +105,7 @@ function LargeDiffNotice(props: { files: DiffFile[] }) {
       {confirming && (
         <ConfirmDialog
           title={`Load ${files.length} collapsed file${files.length === 1 ? '' : 's'}?`}
-          message={`That renders about ${rows.toLocaleString()} more changed lines. Diffity may get slow while they load.`}
+          message={`That renders about ${rows.toLocaleString()} more changed lines. Diffract may get slow while they load.`}
           confirmLabel="Load all"
           onConfirm={() => {
             setConfirming(false);

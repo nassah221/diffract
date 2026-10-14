@@ -55,7 +55,7 @@ pub struct RecentRepo {
     pub last_opened_at: String,
 }
 
-/// What Diffity keeps locally for one project (Settings → Data).
+/// What Diffract keeps locally for one project (Settings → Data).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectData {

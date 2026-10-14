@@ -95,7 +95,7 @@ export async function openRepoAt(path: string, navigate: NavigateFunction, optio
     if (!info.isGit) {
       endOpening();
       toast.error(`${info.name} is not a Git repository`, {
-        description: 'Diffity reviews changes tracked by Git. Run `git init` in that folder, or pick the repository root.',
+        description: 'Diffract reviews changes tracked by Git. Run `git init` in that folder, or pick the repository root.',
       });
       return;
     }

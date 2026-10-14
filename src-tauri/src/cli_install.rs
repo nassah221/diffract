@@ -1,5 +1,5 @@
-//! Diffity → Install 'diffity' Command: links the bundled `diffity-cli` into /usr/local/bin, asking for an
-//! administrator password when that folder is not writable. The dev build installs `diffity-dev` instead.
+//! Diffract → Install 'diffract' Command: links the bundled `diffity-cli` into /usr/local/bin, asking for an
+//! administrator password when that folder is not writable. The dev build installs `diffract-dev` instead.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -9,12 +9,12 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 
 const BIN_DIR: &str = "/usr/local/bin";
 
-/// `diffity`, or `diffity-dev` for the dev build so it never replaces the release's command.
+/// `diffract`, or `diffract-dev` for the dev build so it never replaces the release's command.
 pub fn command_name() -> &'static str {
     if crate::dev_build() {
-        "diffity-dev"
+        "diffract-dev"
     } else {
-        "diffity"
+        "diffract"
     }
 }
 
@@ -58,7 +58,7 @@ fn link_as_admin(cli: &Path, link: &Path) -> Result<(), String> {
     let dir = link.parent().unwrap_or(Path::new("/usr/local/bin"));
     let script = format!(
         "do shell script \"mkdir -p \" & quoted form of {dir} & \" && ln -sf \" & quoted form of {cli} & \" \" & quoted form of {link} \
-         with prompt \"Diffity wants to install the diffity command.\" with administrator privileges",
+         with prompt \"Diffract wants to install the diffract command.\" with administrator privileges",
         dir = applescript_string(&dir.to_string_lossy()),
         cli = applescript_string(&cli.to_string_lossy()),
         link = applescript_string(&link.to_string_lossy()),
@@ -129,12 +129,12 @@ mod tests {
     #[test]
     fn leaves_foreign_commands_alone() {
         let dir = tempfile::tempdir().unwrap();
-        let link = dir.path().join("diffity");
+        let link = dir.path().join("diffract");
         assert!(check_existing(&link).is_ok());
         std::fs::write(&link, "#!/bin/sh").unwrap();
         assert!(check_existing(&link).is_err());
         std::fs::remove_file(&link).unwrap();
-        std::os::unix::fs::symlink("/Applications/Diffity.app/Contents/MacOS/diffity-cli", &link).unwrap();
+        std::os::unix::fs::symlink("/Applications/Diffract.app/Contents/MacOS/diffity-cli", &link).unwrap();
         assert!(check_existing(&link).is_ok());
     }
 }

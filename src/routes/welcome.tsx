@@ -69,7 +69,7 @@ export function WelcomePage() {
 
   useEffect(() => {
     setRepoPath(null);
-    document.title = 'Diffity';
+    document.title = 'Diffract';
     hideStaticSplash();
   }, []);
 

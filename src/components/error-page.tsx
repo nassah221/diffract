@@ -23,7 +23,7 @@ export function ErrorPage(props: ErrorPageProps) {
   let hint = "";
   if (code === "not_a_repo") {
     title = "Not a Git repository";
-    hint = "Diffity reviews changes tracked by Git. Run git init in that folder, or open the repository root.";
+    hint = "Diffract reviews changes tracked by Git. Run git init in that folder, or open the repository root.";
   } else if (code === "not_found") {
     title = "Folder not found";
   } else if (code === "invalid_ref") {

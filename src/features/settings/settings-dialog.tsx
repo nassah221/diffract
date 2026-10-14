@@ -33,7 +33,7 @@ const ICONS: Record<SettingsSection, ComponentType<{ className?: string }>> = {
 const GROUPS: { label: string; sections: SettingsSection[] }[] = [
   { label: 'App', sections: ['general', 'editor', 'shortcuts'] },
   { label: 'Connections', sections: ['agents', 'github'] },
-  { label: 'Diffity', sections: ['data', 'about'] },
+  { label: 'Diffract', sections: ['data', 'about'] },
 ];
 
 const ORDER = GROUPS.flatMap((group) => group.sections);
@@ -58,7 +58,7 @@ const INDEX: { label: string; section: SettingsSection; keywords?: string }[] = 
   { label: 'Personal access token', section: 'github', keywords: 'pat token keychain' },
   { label: 'Agent models', section: 'agents', keywords: 'claude codex opencode model opus sonnet gpt effort thinking' },
   { label: 'Clear a project', section: 'data', keywords: 'delete comments chats purge remove storage' },
-  { label: 'Reset Diffity', section: 'data', keywords: 'delete everything purge wipe reset storage data' },
+  { label: 'Reset Diffract', section: 'data', keywords: 'delete everything purge wipe reset storage data' },
   { label: 'Version', section: 'about', keywords: 'about' },
   { label: 'Check for updates', section: 'about', keywords: 'update upgrade release new version' },
   { label: 'What’s new', section: 'about', keywords: 'release notes changelog new features whats' },

@@ -1,4 +1,4 @@
-//! `diffity://open?path=…` links, sent by the `diffity` command (src/bin/diffity-cli) and agents. Any app or web
+//! `diffract://open?path=…` links, sent by the `diffract` command (src/bin/diffity-cli) and agents. Any app or web
 //! page can fire one, so a link only opens, navigates or checks out a PR (behind the usual dirty-tree guard): it
 //! never edits, comments or posts anything.
 
@@ -36,7 +36,7 @@ fn is_pr(value: &str) -> bool {
 }
 
 pub fn parse(url: &Url) -> Option<OpenRequest> {
-    let scheme_ok = url.scheme() == "diffity" || url.scheme() == "diffity-dev";
+    let scheme_ok = url.scheme() == "diffract" || url.scheme() == "diffract-dev";
     if !scheme_ok || url.host_str() != Some("open") {
         return None;
     }
@@ -67,7 +67,7 @@ fn target_window<R: Runtime>(app: &AppHandle<R>) -> Option<tauri::WebviewWindow<
 pub fn handle_urls<R: Runtime>(app: &AppHandle<R>, urls: Vec<Url>) {
     let requests: Vec<OpenRequest> = urls.iter().filter_map(parse).collect();
     if requests.is_empty() {
-        tracing::warn!("ignored diffity link(s): {urls:?}");
+        tracing::warn!("ignored diffract link(s): {urls:?}");
         return;
     }
     app.state::<PendingOpens>().0.lock().unwrap_or_else(|e| e.into_inner()).extend(requests);
@@ -97,7 +97,7 @@ mod tests {
 
     #[test]
     fn parses_a_full_link() {
-        let request = open("diffity://open?path=/Users/me/my%20repo&ref=main...HEAD&file=src/a.ts&window=new").unwrap();
+        let request = open("diffract://open?path=/Users/me/my%20repo&ref=main...HEAD&file=src/a.ts&window=new").unwrap();
         assert_eq!(request.path.as_deref(), Some("/Users/me/my repo"));
         assert_eq!(request.git_ref.as_deref(), Some("main...HEAD"));
         assert_eq!(request.file.as_deref(), Some("src/a.ts"));
@@ -106,16 +106,16 @@ mod tests {
 
     #[test]
     fn needs_an_absolute_path() {
-        assert!(open("diffity-dev://open?path=/a").is_some());
+        assert!(open("diffract-dev://open?path=/a").is_some());
         assert!(open("other://open?path=/a").is_none());
-        assert!(open("diffity://open").is_none());
-        assert!(open("diffity://open?path=relative").is_none());
-        assert!(open("diffity://other?path=/a").is_none());
+        assert!(open("diffract://open").is_none());
+        assert!(open("diffract://open?path=relative").is_none());
+        assert!(open("diffract://other?path=/a").is_none());
     }
 
     #[test]
     fn drops_unsafe_values() {
-        let request = open("diffity://open?path=/a&ref=--output%3D/tmp/x&file=../../etc/passwd&pr=1;rm&view=x").unwrap();
+        let request = open("diffract://open?path=/a&ref=--output%3D/tmp/x&file=../../etc/passwd&pr=1;rm&view=x").unwrap();
         assert_eq!(request.git_ref, None);
         assert_eq!(request.file, None);
         assert_eq!(request.pr, None);
@@ -124,12 +124,12 @@ mod tests {
 
     #[test]
     fn accepts_pull_requests() {
-        assert_eq!(open("diffity://open?path=/a&pr=42").unwrap().pr.as_deref(), Some("42"));
+        assert_eq!(open("diffract://open?path=/a&pr=42").unwrap().pr.as_deref(), Some("42"));
         let url = "https://github.com/o/r/pull/7";
-        assert_eq!(open(&format!("diffity://open?path=/a&pr={url}")).unwrap().pr.as_deref(), Some(url));
-        let without_repo = open(&format!("diffity://open?pr={url}")).unwrap();
+        assert_eq!(open(&format!("diffract://open?path=/a&pr={url}")).unwrap().pr.as_deref(), Some(url));
+        let without_repo = open(&format!("diffract://open?pr={url}")).unwrap();
         assert_eq!(without_repo.path, None);
         assert_eq!(without_repo.pr.as_deref(), Some(url));
-        assert!(open("diffity://open?pr=7").is_none());
+        assert!(open("diffract://open?pr=7").is_none());
     }
 }

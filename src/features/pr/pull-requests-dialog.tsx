@@ -193,7 +193,7 @@ function PullRequestsBody() {
       return (
         <EmptyState
           title="Sign in to GitHub"
-          detail="Diffity needs your GitHub account to list and check out pull requests. It only reads unless you post a review."
+          detail="Diffract needs your GitHub account to list and check out pull requests. It only reads unless you post a review."
           action={{
             label: 'Sign in',
             onClick: () => {

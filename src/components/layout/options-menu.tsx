@@ -86,7 +86,7 @@ export function OptionsMenu(props: OptionsMenuProps) {
             onClick={close}
           >
             <GitHubIcon className="w-3.5 h-3.5" />
-            About Diffity
+            About Diffract
           </a>
         </>
       </Popover>

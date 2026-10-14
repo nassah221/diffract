@@ -542,7 +542,7 @@ export interface ThreadsChangedPayload {
   sessionId: string;
 }
 
-/** A `diffity://open` link from the `diffity` command or an agent. */
+/** A `diffract://open` link from the `diffract` command or an agent. */
 export interface OpenRequest {
   path: string | null;
   view: 'diff' | 'files' | null;

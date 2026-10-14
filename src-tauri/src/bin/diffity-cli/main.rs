@@ -131,12 +131,12 @@ fn link(params: &[(&str, String)]) -> String {
     format!("{}://open?{}", scheme(), query.join("&"))
 }
 
-/// The dev build ships a CLI that talks to "Diffity Dev" over its own scheme.
+/// The dev build ships a CLI that talks to "Diffract Dev" over its own scheme.
 fn scheme() -> &'static str {
     if option_env!("DIFFITY_CHANNEL") == Some("dev") {
-        "diffity-dev"
+        "diffract-dev"
     } else {
-        "diffity"
+        "diffract"
     }
 }
 
