@@ -95,7 +95,7 @@ export function WelcomePage() {
           <div className="flex items-center gap-3">
             <BrandLogo className="w-9 h-9 shrink-0" />
             <div className="min-w-0">
-              <h1 className="text-[17px] font-semibold text-text leading-6">diffity</h1>
+              <h1 className="text-[17px] font-semibold text-text leading-6">diffract</h1>
               <p className="text-[13px] text-text-secondary truncate">Review code and hand comments to your coding agent</p>
             </div>
           </div>

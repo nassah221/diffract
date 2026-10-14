@@ -77,4 +77,4 @@ upstream's spelling on purpose:
 
 - "Report an Issue…" still opens upstream's tracker (`src/lib/report-issue.ts`, `src-tauri/src/commands/feedback.rs`).
 - `.github/workflows/release.yml` and `dev-build.yml` are upstream's and still expect updater artifacts and signing secrets.
-- The app icon is still upstream's artwork.
+- The app icon and the in-app brand mark (the glyph beside the wordmark) are still upstream's artwork.
