@@ -22,6 +22,9 @@ import type {
   GitOpResult,
   GitStatus,
   GithubAuthStatus,
+  LspEligibility,
+  LspLocation,
+  LspStatus,
   NewThread,
   OpenRequest,
   OverviewFile,
@@ -77,6 +80,20 @@ export const gitStatus = (repoPath: string) => invoke<GitStatus>('git_status', {
 export const repoOverview = (repoPath: string) => invoke<OverviewFile[]>('repo_overview', { repoPath });
 export const openInEditor = (repoPath: string, path: string, line?: number | null, editor?: string | null) =>
   invoke<void>('open_in_editor', { repoPath, path, line: line ?? null, editor: editor ?? null });
+
+// language server (gopls)
+export const lspEligible = (repoPath: string, ref: string) =>
+  invoke<LspEligibility>('lsp_eligible', { repoPath, ref });
+export const lspDefinition = (
+  repoPath: string,
+  ref: string,
+  path: string,
+  side: 'old' | 'new',
+  line: number,
+  character: number,
+  lineText: string,
+) => invoke<LspLocation[]>('lsp_definition', { repoPath, ref, path, side, line, character, lineText });
+export const lspStatus = (repoPath: string) => invoke<LspStatus>('lsp_status', { repoPath });
 export const reportIssue = () => invoke<void>('report_issue');
 export const takeOpenRequests = () => invoke<OpenRequest[]>('take_open_requests');
 export const projectData = () => invoke<ProjectData[]>('project_data');

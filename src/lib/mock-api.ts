@@ -588,6 +588,13 @@ const handlers: Record<string, (args: Args) => unknown> = {
   },
   viewed_changes: () => '',
   get_diff_ignore_rules: (args) => settings.get(`diffignore:${String(args.repoPath)}`) ?? '',
+  // The browser mock has no language server, so these stand in for the UI path. The real gopls path is
+  // covered by the Rust harness and by the command tests.
+  lsp_status: () => ({ serverFound: true, serverPath: '/mock/gopls', roots: [REPO_PATH] }),
+  lsp_eligible: () => ({ eligible: true, side: 'new', reason: null }),
+  lsp_definition: () => [
+    { path: 'src/utils/format.ts', insideRepo: true, line: 10, startCharacter: 0, endCharacter: 6 },
+  ],
   set_diff_ignore_rules: (args) => {
     settings.set(`diffignore:${String(args.repoPath)}`, String(args.rules));
     return null;

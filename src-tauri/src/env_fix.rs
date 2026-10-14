@@ -38,6 +38,7 @@ fn fallback_dirs(home: Option<&std::path::Path>) -> Vec<std::path::PathBuf> {
     if let Some(home) = home {
         for rel in [
             ".local/bin",
+            "go/bin",
             ".claude/local",
             ".volta/bin",
             ".bun/bin",

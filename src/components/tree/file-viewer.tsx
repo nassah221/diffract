@@ -27,6 +27,8 @@ interface FileViewerProps {
 export interface FileViewerHandle {
   /** Scrolls the thread's line into view; false when the thread is not on this file. */
   revealThread: (threadId: string) => boolean;
+  /** Scrolls a line into view, for a jump from a definition. */
+  revealLine: (line: number) => void;
 }
 
 const CURRENT_AUTHOR: CommentAuthor = { name: 'You', type: 'user' };
@@ -159,6 +161,7 @@ export const FileViewer = forwardRef<FileViewerHandle, FileViewerProps>(function
       revealLine(thread.endLine);
       return true;
     },
+    revealLine,
   }), [fileThreads, revealLine]);
 
   const findSource = useMemo<FindSource>(() => ({
@@ -287,6 +290,9 @@ export const FileViewer = forwardRef<FileViewerHandle, FileViewerProps>(function
           />
           <td
             data-find-line={lineNum}
+            data-code-cell
+            data-code-line={lineNum}
+            data-code-side="new"
             className={cn(
               'px-4 py-0 code-text whitespace-pre',
               selected && 'bg-diff-comment-bg',

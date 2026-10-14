@@ -3,7 +3,7 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import type { CommentThread, CommentAuthor, CommentSide, Comment, SubmitOptions } from '../components/comments/types';
 import * as tauri from './tauri';
-import type { DiffFileSummary, PullRequest, Thread, Comment as BackendComment, TreeEntry } from './types';
+import type { DiffFileSummary, LspEligibility, LspLocation, LspStatus, PullRequest, Thread, Comment as BackendComment, TreeEntry } from './types';
 import { TREE_REF } from './types';
 
 dayjs.extend(relativeTime);
@@ -219,6 +219,34 @@ export async function fetchRepoInfo(ref?: string): Promise<RepoInfo> {
 export async function openInEditor(filePath: string, line?: number): Promise<{ ok: boolean }> {
   await tauri.openInEditor(getRepoPath(), filePath, line ?? null);
   return { ok: true };
+}
+
+/** Whether go-to-definition applies to this diff at all. Cheap: it resolves the ref, nothing more. */
+export function fetchLspEligibility(ref: string): Promise<LspEligibility> {
+  return tauri.lspEligible(getRepoPath(), ref || 'work');
+}
+
+/**
+ * Asks gopls where the symbol at this position is declared.
+ *
+ * `lineText` is the line as the diff renders it: the backend compares it against the file on disk before
+ * trusting the position, because a diff can be showing an index blob or an older commit while the language
+ * server reads the working tree.
+ */
+export function fetchDefinition(input: {
+  ref: string;
+  path: string;
+  side: 'old' | 'new';
+  line: number;
+  character: number;
+  lineText: string;
+}): Promise<LspLocation[]> {
+  const { ref, path, side, line, character, lineText } = input;
+  return tauri.lspDefinition(getRepoPath(), ref || 'work', path, side, line, character, lineText);
+}
+
+export function fetchLspStatus(): Promise<LspStatus> {
+  return tauri.lspStatus(getRepoPath());
 }
 
 export async function fetchOverview(): Promise<Overview> {

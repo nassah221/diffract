@@ -146,6 +146,8 @@ function SplitCell(props: {
       />
       <td
         data-code-cell
+        data-code-side={side === 'left' ? 'old' : 'new'}
+        data-code-line={lineNum ?? undefined}
         className={cn('px-3 code-cell border-r border-border-muted align-top', isSelected ? 'bg-diff-comment-bg' : contentBgClass)}
         onMouseEnter={() => setContentHovered(true)}
         onMouseLeave={() => setContentHovered(false)}

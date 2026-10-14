@@ -80,11 +80,18 @@ export function useViewState<T>(key: string, initial: T | (() => T)): [T, Dispat
  * Keeps a scroll container's offset under `key`: restored before the first paint, and again while content that
  * loads late (images, diagrams, a skeleton being replaced) grows the container, until the user scrolls.
  */
-export function useRestoredScroll(ref: RefObject<HTMLElement | null>, key: string) {
+export function useRestoredScroll(ref: RefObject<HTMLElement | null>, key: string, enabled = true) {
   const full = scoped(key);
   const restoring = useRef(false);
+  // Read through a ref so toggling `enabled` cannot re-run the effect: a jump target wins over the remembered
+  // offset, and re-restoring right after the jump would undo the reveal.
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
 
   useLayoutEffect(() => {
+    if (!enabledRef.current) {
+      return;
+    }
     const el = ref.current;
     const target = readScoped<number>(full, 0);
     if (!el) {

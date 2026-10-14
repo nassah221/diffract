@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import {
   useQuery,
   useSuspenseQuery,
@@ -103,6 +103,9 @@ export function TreePage() {
 
   const navPath = searchParams.get('path') || '';
   const navType = (searchParams.get('type') || 'dir') as 'file' | 'dir';
+  // `?line=` is a one-shot jump target: consumed below, then removed from the URL.
+  const jumpLine = Number(searchParams.get('line') ?? '');
+  const hasJump = Number.isInteger(jumpLine) && jumpLine > 0;
 
   const setNav = useCallback(
     (path: string, type: 'file' | 'dir') => {
@@ -118,6 +121,15 @@ export function TreePage() {
   );
 
   const [focusedThreadId, setFocusedThreadId] = useState<string | null>(null);
+  /** Set when a go-to-definition jump opened this file, so the view can offer the way back. */
+  const [cameFromJump, setCameFromJump] = useState(false);
+  const navigate = useNavigate();
+
+  // Leaving this file by any other route drops the way-back affordance. Runs before the consumption effect
+  // below on the render that lands here, which then sets it again.
+  useEffect(() => {
+    setCameFromJump(false);
+  }, [navPath]);
 
   useEffect(() => {
     hideStaticSplash();
@@ -126,7 +138,7 @@ export function TreePage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const fileViewerRef = useRef<FileViewerHandle>(null);
-  useRestoredScroll(mainRef, `tree:scroll:${navType}:${navPath}`);
+  useRestoredScroll(mainRef, `tree:scroll:${navType}:${navPath}`, !hasJump);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -160,6 +172,20 @@ export function TreePage() {
     enabled: isFileMode && !isImage,
     placeholderData: keepPreviousData,
   });
+
+  useEffect(() => {
+    // Wait for the target file's own content (`keepPreviousData` leaves the previous file's in place while the
+    // new one loads) and for the viewer itself, which is not mounted until the skeleton is gone. Stripping the
+    // parameter before either would silently drop the jump.
+    if (!hasJump || !isFileMode || !fileContent || fileFetching || !fileViewerRef.current) {
+      return;
+    }
+    fileViewerRef.current.revealLine(jumpLine);
+    setCameFromJump(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('line');
+    setSearchParams(next, { replace: true });
+  }, [hasJump, jumpLine, isFileMode, fileContent, fileFetching, threadsFetched, searchParams, setSearchParams]);
 
   const { data: entriesData, isFetching: entriesFetching } = useQuery({
     ...treeEntriesOptions(navPath || undefined),
@@ -414,6 +440,15 @@ export function TreePage() {
           <Breadcrumb name={info?.name}>
             <CurrentCrumb>Files</CurrentCrumb>
           </Breadcrumb>
+          {cameFromJump && (
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="ml-1 shrink-0 rounded px-1.5 py-0.5 text-[11px] text-text-secondary hover:bg-fill hover:text-text cursor-pointer"
+            >
+              ← Back to the diff
+            </button>
+          )}
         </div>
         <div data-tauri-drag-region className='flex-1 min-w-2 self-stretch' />
         <div className='flex items-center gap-2 shrink-0'>

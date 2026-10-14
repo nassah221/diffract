@@ -11,6 +11,28 @@ export interface AppError {
   message: string;
 }
 
+/** Whether go-to-definition applies to the diff currently on screen; `reason` explains it when it does not. */
+export interface LspEligibility {
+  eligible: boolean;
+  side: Side | null;
+  reason: string | null;
+}
+
+/** A definition target. `path` is repo-relative inside the repo, absolute outside it (module cache, `$GOROOT`). */
+export interface LspLocation {
+  path: string;
+  insideRepo: boolean;
+  line: number;
+  startCharacter: number;
+  endCharacter: number;
+}
+
+export interface LspStatus {
+  serverFound: boolean;
+  serverPath: string | null;
+  roots: string[];
+}
+
 export interface RepoInfo {
   path: string;
   name: string;

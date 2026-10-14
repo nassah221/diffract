@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
-import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DiffFile } from '@/lib/diff-parser';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
@@ -43,6 +43,8 @@ import { readViewState, useViewState, writeViewState } from '../../lib/view-stat
 import { MovedComposer, selectionInDiff } from '../comments/moved-composer';
 import { Workspace } from '../layout/title-bar';
 import { ReviewStateProvider } from '../../features/review/review-state';
+import { lspEligibilityOptions } from '../../queries/lsp';
+import { useDefinitionJump } from '../../features/lsp/use-definition-jump';
 import { useViewedFiles } from '../../hooks/use-viewed-files';
 import type { SinceViewedInfo } from './since-viewed';
 import { useGitHubPr, useOwnPr } from '../../hooks/use-repo-state';
@@ -143,6 +145,15 @@ export function DiffPage(props: DiffPageProps) {
   const mainRef = useRef<HTMLElement | null>(null);
   const diffViewRef = useRef<DiffViewHandle>(null);
   const currentFileIdx = useRef(0);
+
+  // Go-to-definition. The backend decides whether the language server can see what this diff shows; the click
+  // handler stays inert unless it can.
+  const { data: lspEligibility } = useQuery(lspEligibilityOptions(refParam));
+  const definitionJump = useDefinitionJump({
+    ref: refParam,
+    files: diff?.files ?? [],
+    enabled: !!lspEligibility?.eligible,
+  });
 
   const reviewsEnabled = !!info?.capabilities?.reviews;
   const sessionId = info?.sessionId ?? null;
@@ -698,7 +709,8 @@ export function DiffPage(props: DiffPageProps) {
 
   return (
     <ReviewStateProvider sessionId={reviewsEnabled ? sessionId : null} prMode={!!githubDetails && !ownPr} ownPrNumber={ownPr && githubDetails && refParam === prDiffRef(githubDetails) ? githubDetails.prNumber : null}>
-    <div className="flex flex-col h-screen bg-frame text-text font-sans">
+    <div className="flex flex-col h-screen bg-frame text-text font-sans" onMouseDown={definitionJump.onMouseDown}>
+      {definitionJump.menu}
       <Toolbar
         theme={theme}
         onToggleTheme={toggleTheme}
