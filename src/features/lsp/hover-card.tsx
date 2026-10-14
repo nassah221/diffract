@@ -7,7 +7,7 @@
 
 import type { RefObject } from 'react';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import type { LspHover } from '../../lib/types';
+import type { HoverState } from './use-symbol-hover';
 
 export type HoverBlock =
   | { kind: 'code'; language: string; text: string }
@@ -78,7 +78,7 @@ function renderText(text: string) {
   });
 }
 
-export function HoverCard(props: { card: { x: number; y: number; hover: LspHover } | null; cardRef: RefObject<HTMLDivElement | null> }) {
+export function HoverCard(props: { card: HoverState | null; cardRef: RefObject<HTMLDivElement | null> }) {
   const { card, cardRef } = props;
   if (!card) {
     return null;
@@ -86,13 +86,14 @@ export function HoverCard(props: { card: { x: number; y: number; hover: LspHover
 
   const width = 520;
   const blocks = parseHoverMarkdown(card.hover.value);
-  // Offset from the pointer so the cursor never sits on the card, and kept inside the viewport.
-  const left = Math.max(8, Math.min(card.x + 14, window.innerWidth - width - 16));
-  const top = Math.min(card.y + 20, Math.max(8, window.innerHeight - 220));
+  // Pinned to the symbol's own box rather than the cursor, and kept inside the viewport.
+  const left = Math.max(8, Math.min(card.anchor.left, window.innerWidth - width - 16));
+  const top = Math.min(card.anchor.top, Math.max(8, window.innerHeight - 220));
 
   return (
     <div
       ref={cardRef}
+      data-lsp-card
       className="fixed z-50 flex flex-col gap-1.5 rounded-lg border border-overlay-border bg-overlay px-3 py-2 text-xs text-text shadow-lg"
       style={{ left, top, maxWidth: width, maxHeight: 320, overflow: 'hidden' }}
     >

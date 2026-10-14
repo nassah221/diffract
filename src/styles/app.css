@@ -733,3 +733,16 @@ dialog {
   color: #111111;
 }
 
+/* The symbol a ⌘-click would follow: tinted and underlined, so the affordance is visible before the click. */
+::highlight(diffity-lsp-symbol) {
+  background-color: rgba(9, 105, 218, 0.18);
+  text-decoration: underline;
+  text-decoration-color: rgba(9, 105, 218, 0.75);
+  text-underline-offset: 2px;
+}
+
+[data-theme='dark'] ::highlight(diffity-lsp-symbol) {
+  background-color: rgba(59, 130, 246, 0.26);
+  text-decoration-color: rgba(96, 165, 250, 0.8);
+}
+

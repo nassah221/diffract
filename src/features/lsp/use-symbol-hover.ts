@@ -1,24 +1,30 @@
 /**
- * Shows what a symbol is while the pointer rests on it.
+ * Symbol affordances on pointer move: the hover card, and the ⌘ highlight that previews a click.
  *
- * Hover fires far more often than a click, so this is debounced, keyed on the resolved
- * `(path, line, character)` so moving along a line is free, and cached per position — a second look costs
- * nothing. Nothing is asked when the pointer is over the card itself, which would otherwise hide it.
+ * Both are keyed on the *symbol* rather than the caret, so moving along a word does nothing at all — the card
+ * stays where it was put and no request is made. The card is anchored to the symbol's own box, not the cursor,
+ * which is what keeps it from drifting as the pointer moves over the text.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchHover } from '../../lib/api';
 import type { DiffFile } from '../../lib/diff-parser';
-import { symbolAtPoint } from '../../lib/symbol-position';
+import { rangeForOffsets, symbolAtPoint, wordAt } from '../../lib/symbol-position';
 import type { LspHover } from '../../lib/types';
 import { lineTextAt } from './use-definition-jump';
+import { setSymbolHighlight } from './symbol-highlight';
 
 /** Long enough that sweeping the mouse across a line does not fire a request per glyph. */
 const SETTLE_MS = 120;
 
+/** Where the card sits: the symbol's box it is pinned to, so it does not follow the pointer. */
+export interface HoverAnchor {
+  left: number;
+  top: number;
+}
+
 export interface HoverState {
-  x: number;
-  y: number;
+  anchor: HoverAnchor;
   hover: LspHover;
 }
 
@@ -29,6 +35,8 @@ export function useSymbolHover(options: { ref: string; files: DiffFile[]; enable
   const cache = useRef(new Map<string, LspHover | null>());
   const timer = useRef<number | undefined>(undefined);
   const shownKey = useRef<string | null>(null);
+  /** The last pointer position, so pressing ⌘ highlights without needing the mouse to move. */
+  const lastPoint = useRef<{ x: number; y: number } | null>(null);
 
   const hide = useCallback(() => {
     shownKey.current = null;
@@ -36,8 +44,31 @@ export function useSymbolHover(options: { ref: string; files: DiffFile[]; enable
     setCard(null);
   }, []);
 
+  /** The symbol under a point, with the word span and the box to pin things to. */
+  const resolve = useCallback(
+    (x: number, y: number) => {
+      const target = symbolAtPoint(x, y);
+      if (!target || !target.path.endsWith('.go')) {
+        return null;
+      }
+      const lineText = lineTextAt(files, target.path, target.side, target.line);
+      if (lineText === null) {
+        return null;
+      }
+      const word = wordAt(lineText, Math.max(0, Math.min(target.character, lineText.length)));
+      if (!word) {
+        return null;
+      }
+      const range = rangeForOffsets(target.cell, word.start, word.end);
+      const box = range?.getBoundingClientRect() ?? null;
+      return { target, lineText, word, range, box };
+    },
+    [files],
+  );
+
   const onMouseMove = useCallback(
     (event: React.MouseEvent) => {
+      lastPoint.current = { x: event.clientX, y: event.clientY };
       if (!enabled) {
         return;
       }
@@ -45,35 +76,37 @@ export function useSymbolHover(options: { ref: string; files: DiffFile[]; enable
         return;
       }
 
-      const target = symbolAtPoint(event.clientX, event.clientY);
-      if (!target || !target.path.endsWith('.go')) {
+      const found = resolve(event.clientX, event.clientY);
+      if (!found) {
+        setSymbolHighlight(null);
         hide();
         return;
       }
 
-      const key = `${target.path}:${target.line}:${target.character}`;
+      // ⌘ previews the jump: underline the symbol the click would follow.
+      setSymbolHighlight(event.metaKey ? found.range : null);
+
+      const key = `${found.target.path}:${found.target.line}:${found.word.start}`;
       if (shownKey.current === key) {
-        return;
-      }
-      const lineText = lineTextAt(files, target.path, target.side, target.line);
-      if (lineText === null) {
-        hide();
+        // Same symbol: leave the card exactly where it is.
         return;
       }
 
-      const at = { x: event.clientX, y: event.clientY };
+      const { target, lineText, box } = found;
       window.clearTimeout(timer.current);
       shownKey.current = key;
+      const place = (): HoverAnchor => {
+        const rect = box ?? target.cell.getBoundingClientRect();
+        return { left: rect.left, top: rect.bottom + 6 };
+      };
 
       const cached = cache.current.get(key);
       if (cached !== undefined) {
-        setCard(cached ? { ...at, hover: cached } : null);
+        setCard(cached ? { anchor: place(), hover: cached } : null);
         return;
       }
 
       timer.current = window.setTimeout(() => {
-        // An empty line renders a phantom newline the caret can sit in, so the offset is bounded by the real
-        // line length before it is sent.
         const character = Math.max(0, Math.min(target.character, lineText.length));
         void fetchHover({ ...target, ref, character, lineText })
           .then((hover) => {
@@ -83,14 +116,45 @@ export function useSymbolHover(options: { ref: string; files: DiffFile[]; enable
             }
             cache.current.set(key, hover);
             if (shownKey.current === key) {
-              setCard(hover ? { ...at, hover } : null);
+              setCard(hover ? { anchor: place(), hover } : null);
             }
           })
           .catch(() => hide());
       }, SETTLE_MS);
     },
-    [enabled, files, hide, ref],
+    [enabled, hide, ref, resolve],
   );
 
-  return { onMouseMove, onMouseLeave: hide, card, cardRef };
+  /** Leaving the code, or the window, drops both affordances. */
+  const onMouseLeave = useCallback(() => {
+    lastPoint.current = null;
+    setSymbolHighlight(null);
+    hide();
+  }, [hide]);
+
+  // ⌘ can be pressed or released without the pointer moving, so both keys are watched.
+  useEffect(() => {
+    const sync = (metaKey: boolean) => {
+      const point = lastPoint.current;
+      if (!metaKey || !enabled || !point) {
+        setSymbolHighlight(null);
+        return;
+      }
+      setSymbolHighlight(resolve(point.x, point.y)?.range ?? null);
+    };
+    const onKeyDown = (event: KeyboardEvent) => event.key === 'Meta' && sync(true);
+    const onKeyUp = (event: KeyboardEvent) => event.key === 'Meta' && sync(false);
+    const onBlur = () => sync(false);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+      setSymbolHighlight(null);
+    };
+  }, [enabled, resolve]);
+
+  return { onMouseMove, onMouseLeave, card, cardRef };
 }

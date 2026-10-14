@@ -49,8 +49,8 @@ export function editorTargetFor(location: LspLocation): { dir: string; name: str
 interface Pending {
   x: number;
   y: number;
-  /** null while the request is in flight. */
-  locations: LspLocation[] | null;
+  /** Empty when nothing was found; only set once the answer is in. */
+  locations: LspLocation[];
   error: string | null;
 }
 
@@ -62,41 +62,6 @@ export function useDefinitionJump(options: { ref: string; files: DiffFile[]; ena
   const [pending, setPending] = useState<Pending | null>(null);
   const navigate = useNavigate();
   const { pathname } = useLocation();
-
-  const onMouseDown = useCallback(
-    async (event: React.MouseEvent) => {
-      // ⌘-click, like an editor. Plain clicks stay free for selecting lines and commenting.
-      if (!enabled || !event.metaKey || event.button !== 0) {
-        return;
-      }
-      const target = symbolAtPoint(event.clientX, event.clientY);
-      // v0 speaks Go: anything else would open a menu whose only outcome is an error.
-      if (!target || !target.path.endsWith('.go')) {
-        return;
-      }
-      const lineText = lineTextAt(files, target.path, target.side, target.line);
-      if (lineText === null) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      // Identity matters: a second click must not have its menu overwritten by the first click's answer.
-      const request: Pending = { x: event.clientX, y: event.clientY, locations: null, error: null };
-      setPending(request);
-      try {
-        // An empty line renders a phantom newline the caret can sit in, so the offset is bounded by the
-        // line's real length before it is sent.
-        const character = Math.max(0, Math.min(target.character, lineText.length));
-        const locations = await fetchDefinition({ ...target, ref, character, lineText });
-        setPending((current) => (current === request ? { ...current, locations } : current));
-      } catch (error) {
-        setPending((current) => (current === request ? { ...current, error: errorMessage(error) } : current));
-      }
-    },
-    [enabled, files, ref],
-  );
-
-  const close = useCallback(() => setPending(null), []);
 
   const go = useCallback(
     (location: LspLocation) => {
@@ -111,12 +76,48 @@ export function useDefinitionJump(options: { ref: string; files: DiffFile[]; ena
     [navigate, pathname],
   );
 
+  const onMouseDown = useCallback(
+    async (event: React.MouseEvent) => {
+      // ⌘-click, like an editor. Plain clicks stay free for selecting lines and commenting.
+      if (!enabled || !event.metaKey || event.button !== 0) {
+        return;
+      }
+      const target = symbolAtPoint(event.clientX, event.clientY);
+      // v0 speaks Go: anything else would be a query that can only fail.
+      if (!target || !target.path.endsWith('.go')) {
+        return;
+      }
+      const lineText = lineTextAt(files, target.path, target.side, target.line);
+      if (lineText === null) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      const at = { x: event.clientX, y: event.clientY };
+      try {
+        // An empty line renders a phantom newline the caret can sit in, so the offset is bounded by the
+        // line's real length before it is sent.
+        const character = Math.max(0, Math.min(target.character, lineText.length));
+        const locations = await fetchDefinition({ ...target, ref, character, lineText });
+        // Go there. The menu exists only to disambiguate, so one answer means no menu at all.
+        if (locations.length === 1) {
+          go(locations[0]);
+          return;
+        }
+        setPending({ ...at, locations, error: null });
+      } catch (error) {
+        setPending({ ...at, locations: [], error: errorMessage(error) });
+      }
+    },
+    [enabled, files, go, ref],
+  );
+
+  const close = useCallback(() => setPending(null), []);
+
   const menu = (
     <ContextMenu position={pending ? { x: pending.x, y: pending.y } : null} onClose={close} width={340}>
       {pending?.error ? (
         <div className="px-2.5 py-2 text-xs text-text-secondary">{pending.error}</div>
-      ) : pending?.locations === null ? (
-        <div className="px-2.5 py-2 text-xs text-text-muted">Looking for the definition…</div>
       ) : !pending || pending.locations.length === 0 ? (
         <div className="px-2.5 py-2 text-xs text-text-muted">No definition found here.</div>
       ) : (

@@ -1,5 +1,6 @@
 /**
- * Maps a pointer position to the `(path, side, line, character)` a language server wants.
+ * Maps a pointer position to the `(path, side, line, character)` a language server wants, and to the symbol
+ * around it.
  *
  * The views render highlighted spans rather than an editor, so a position is recovered from the caret the
  * browser places in the text, combined with the file, line and side the markup declares about itself
@@ -19,6 +20,33 @@ export interface SymbolAtPoint {
   line: number;
   /** 0-based offset into the line's text. */
   character: number;
+  /** The rendered cell the symbol is in, so callers can measure or highlight the same text again. */
+  cell: HTMLElement;
+}
+
+/** A half-open `[start, end)` span of a line's text. */
+export interface WordSpan {
+  start: number;
+  end: number;
+}
+
+const WORD = /[A-Za-z0-9_]/;
+
+/**
+ * The identifier around `character`, or null when the caret is on something that is not one. Pure, so the
+ * "did the pointer move to a different symbol" question does not need the DOM.
+ */
+export function wordAt(text: string, character: number): WordSpan | null {
+  const position = Math.max(0, Math.min(character, text.length));
+  let start = position;
+  let end = position;
+  while (start > 0 && WORD.test(text[start - 1] ?? '')) {
+    start -= 1;
+  }
+  while (end < text.length && WORD.test(text[end] ?? '')) {
+    end += 1;
+  }
+  return end > start ? { start, end } : null;
 }
 
 /** WebKit's caret API is not in the DOM typings, so naming it needs the extra optional member. */
@@ -66,5 +94,33 @@ export function symbolAtPoint(x: number, y: number): SymbolAtPoint | null {
   // `textSegments` already skips `<button>` text (the truncation button lives inside the cell but is not part
   // of the line), so a caret in it fails the lookup and the click resolves to nothing.
   const segment = textSegments(cell).find((candidate) => candidate.node === range.startContainer);
-  return segment ? { path, side, line, character: segment.start + range.startOffset } : null;
+  return segment
+    ? { path, side, line, character: segment.start + range.startOffset, cell }
+    : null;
+}
+
+/**
+ * The DOM range for `[start, end)` of a cell's text, across the token spans it is split into. Used to measure a
+ * symbol (so a card can sit still against it) and to highlight it.
+ */
+export function rangeForOffsets(cell: HTMLElement, start: number, end: number): Range | null {
+  const segments = textSegments(cell);
+  const locate = (offset: number) => {
+    for (const segment of segments) {
+      if (offset <= segment.start + segment.node.data.length) {
+        return { node: segment.node, offset: Math.max(0, offset - segment.start) };
+      }
+    }
+    return null;
+  };
+
+  const from = locate(start);
+  const to = locate(end);
+  if (!from || !to) {
+    return null;
+  }
+  const range = document.createRange();
+  range.setStart(from.node, from.offset);
+  range.setEnd(to.node, to.offset);
+  return range;
 }
