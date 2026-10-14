@@ -86,16 +86,20 @@ export function HoverCard(props: { card: HoverState | null; cardRef: RefObject<H
 
   const width = 520;
   const blocks = parseHoverMarkdown(card.hover.value);
-  // Pinned to the symbol's own box rather than the cursor, and kept inside the viewport.
+  // Pinned to the symbol's box rather than the cursor, and kept inside the viewport. Anchored by whichever
+  // edge the hook chose, so a card above the symbol needs no height measurement first.
   const left = Math.max(8, Math.min(card.anchor.left, window.innerWidth - width - 16));
-  const top = Math.min(card.anchor.top, Math.max(8, window.innerHeight - 220));
+  const vertical =
+    'top' in card.anchor
+      ? { top: card.anchor.top, maxHeight: window.innerHeight - card.anchor.top - 16 }
+      : { bottom: card.anchor.bottom, maxHeight: card.anchor.bottom - 16 };
 
   return (
     <div
       ref={cardRef}
       data-lsp-card
       className="fixed z-50 flex flex-col gap-1.5 rounded-lg border border-overlay-border bg-overlay px-3 py-2 text-xs text-text shadow-lg"
-      style={{ left, top, maxWidth: width, maxHeight: 320, overflow: 'hidden' }}
+      style={{ left, ...vertical, maxWidth: width, overflow: 'hidden' }}
     >
       {blocks.map((block, index) => {
         if (block.kind === 'rule') {

@@ -99,6 +99,23 @@ export function symbolAtPoint(x: number, y: number): SymbolAtPoint | null {
     : null;
 }
 
+/** Where a card pinned to a symbol goes: anchored by whichever edge keeps it next to the symbol. */
+export type CardAnchor = { left: number; top: number } | { left: number; bottom: number };
+
+/** Below this much room under a symbol, the card goes above it instead. */
+const FLIP_BELOW = 260;
+
+export function placeCard(
+  rect: { left: number; top: number; bottom: number },
+  viewportHeight: number,
+  flipBelow = FLIP_BELOW,
+): CardAnchor {
+  const roomBelow = viewportHeight - rect.bottom;
+  return roomBelow < flipBelow && rect.top > flipBelow
+    ? { left: rect.left, bottom: viewportHeight - rect.top + 6 }
+    : { left: rect.left, top: rect.bottom + 6 };
+}
+
 /**
  * The DOM range for `[start, end)` of a cell's text, across the token spans it is split into. Used to measure a
  * symbol (so a card can sit still against it) and to highlight it.

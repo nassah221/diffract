@@ -1,30 +1,33 @@
 /**
  * Symbol affordances on pointer move: the hover card, and the ⌘ highlight that previews a click.
  *
- * Both are keyed on the *symbol* rather than the caret, so moving along a word does nothing at all — the card
- * stays where it was put and no request is made. The card is anchored to the symbol's own box, not the cursor,
- * which is what keeps it from drifting as the pointer moves over the text.
+ * Timing follows an editor rather than a tooltip-on-hover:
+ *
+ * - the pointer must **dwell** on a symbol before anything is asked for, so sweeping across a line costs
+ *   nothing and never flashes a card;
+ * - once shown, the card **stays put until the next symbol's content is ready**, so moving between symbols
+ *   updates it in one step instead of jumping;
+ * - leaving a symbol hides it only after a short grace period, so crossing a space does not blink it away;
+ * - moving *within* a symbol is a no-op — no request, no reposition.
+ *
+ * The card is anchored to the symbol's own box, not the cursor.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchHover } from '../../lib/api';
 import type { DiffFile } from '../../lib/diff-parser';
-import { rangeForOffsets, symbolAtPoint, wordAt } from '../../lib/symbol-position';
+import { placeCard, rangeForOffsets, symbolAtPoint, wordAt, type CardAnchor } from '../../lib/symbol-position';
 import type { LspHover } from '../../lib/types';
 import { lineTextAt } from './use-definition-jump';
 import { setSymbolHighlight } from './symbol-highlight';
 
-/** Long enough that sweeping the mouse across a line does not fire a request per glyph. */
-const SETTLE_MS = 120;
-
-/** Where the card sits: the symbol's box it is pinned to, so it does not follow the pointer. */
-export interface HoverAnchor {
-  left: number;
-  top: number;
-}
+/** How long the pointer must rest on a symbol before a card is asked for. */
+const DWELL_MS = 350;
+/** How long a shown card survives after the pointer leaves a symbol. */
+const GRACE_MS = 220;
 
 export interface HoverState {
-  anchor: HoverAnchor;
+  anchor: CardAnchor;
   hover: LspHover;
 }
 
@@ -33,15 +36,38 @@ export function useSymbolHover(options: { ref: string; files: DiffFile[]; enable
   const [card, setCard] = useState<HoverState | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const cache = useRef(new Map<string, LspHover | null>());
-  const timer = useRef<number | undefined>(undefined);
-  const shownKey = useRef<string | null>(null);
+  /** Only ever set while the card on screen belongs to that key. */
+  const shown = useRef<string | null>(null);
+  /** The key the pointer is currently over, so a timer that fires late can tell it moved on. */
+  const over = useRef<string | null>(null);
+  const dwellTimer = useRef<number | undefined>(undefined);
+  const graceTimer = useRef<number | undefined>(undefined);
   /** The last pointer position, so pressing ⌘ highlights without needing the mouse to move. */
   const lastPoint = useRef<{ x: number; y: number } | null>(null);
 
+  const cancelDwell = () => window.clearTimeout(dwellTimer.current);
+  const cancelGrace = () => window.clearTimeout(graceTimer.current);
+
   const hide = useCallback(() => {
-    shownKey.current = null;
-    window.clearTimeout(timer.current);
+    cancelDwell();
+    cancelGrace();
+    over.current = null;
+    shown.current = null;
     setCard(null);
+  }, []);
+
+  /** After the grace period, unless the pointer came back to a symbol in the meantime. */
+  const scheduleHide = useCallback(() => {
+    if (!shown.current) {
+      cancelDwell();
+      return;
+    }
+    cancelDwell();
+    cancelGrace();
+    graceTimer.current = window.setTimeout(() => {
+      shown.current = null;
+      setCard(null);
+    }, GRACE_MS);
   }, []);
 
   /** The symbol under a point, with the word span and the box to pin things to. */
@@ -61,10 +87,18 @@ export function useSymbolHover(options: { ref: string; files: DiffFile[]; enable
       }
       const range = rangeForOffsets(target.cell, word.start, word.end);
       const box = range?.getBoundingClientRect() ?? null;
-      return { target, lineText, word, range, box };
+      return { target, lineText, range, box, key: `${target.path}:${target.line}:${word.start}` };
     },
     [files],
   );
+
+  /**
+   * Pin to the symbol, flipping above it when there is no room below. Anchoring by the card's bottom edge in
+   * that case means the height never has to be measured first, so the first frame is already in place.
+   */
+  const place = useCallback((box: DOMRect | null, cell: HTMLElement): CardAnchor => {
+    return placeCard(box ?? cell.getBoundingClientRect(), window.innerHeight);
+  }, []);
 
   const onMouseMove = useCallback(
     (event: React.MouseEvent) => {
@@ -78,35 +112,43 @@ export function useSymbolHover(options: { ref: string; files: DiffFile[]; enable
 
       const found = resolve(event.clientX, event.clientY);
       if (!found) {
+        over.current = null;
         setSymbolHighlight(null);
-        hide();
+        scheduleHide();
         return;
       }
 
-      // ⌘ previews the jump: underline the symbol the click would follow.
+      cancelGrace();
+      // ⌘ previews the jump, and that affordance is immediate — it answers "what would a click do".
       setSymbolHighlight(event.metaKey ? found.range : null);
 
-      const key = `${found.target.path}:${found.target.line}:${found.word.start}`;
-      if (shownKey.current === key) {
-        // Same symbol: leave the card exactly where it is.
+      const { target, lineText, key } = found;
+      if (over.current === key) {
+        return;
+      }
+      over.current = key;
+
+      if (shown.current === key) {
+        // Already on screen for this symbol: leave it exactly where it is.
+        cancelDwell();
         return;
       }
 
-      const { target, lineText, box } = found;
-      window.clearTimeout(timer.current);
-      shownKey.current = key;
-      const place = (): HoverAnchor => {
-        const rect = box ?? target.cell.getBoundingClientRect();
-        return { left: rect.left, top: rect.bottom + 6 };
-      };
-
-      const cached = cache.current.get(key);
-      if (cached !== undefined) {
-        setCard(cached ? { anchor: place(), hover: cached } : null);
-        return;
-      }
-
-      timer.current = window.setTimeout(() => {
+      // Hold the current card while the next symbol settles, so moving between symbols never flashes.
+      cancelDwell();
+      dwellTimer.current = window.setTimeout(() => {
+        if (over.current !== key) {
+          return;
+        }
+        const anchor: CardAnchor = place(found.box, target.cell);
+        const cached = cache.current.get(key);
+        if (cached !== undefined) {
+          shown.current = cached ? key : null;
+          setCard(cached ? { anchor, hover: cached } : null);
+          return;
+        }
+        // An empty line renders a phantom newline the caret can sit in, so the offset is bounded by the real
+        // line length before it is sent.
         const character = Math.max(0, Math.min(target.character, lineText.length));
         void fetchHover({ ...target, ref, character, lineText })
           .then((hover) => {
@@ -115,17 +157,18 @@ export function useSymbolHover(options: { ref: string; files: DiffFile[]; enable
               cache.current.clear();
             }
             cache.current.set(key, hover);
-            if (shownKey.current === key) {
-              setCard(hover ? { anchor: place(), hover } : null);
+            if (over.current === key) {
+              shown.current = hover ? key : null;
+              setCard(hover ? { anchor, hover } : null);
             }
           })
           .catch(() => hide());
-      }, SETTLE_MS);
+      }, DWELL_MS);
     },
-    [enabled, hide, ref, resolve],
+    [enabled, hide, place, ref, resolve, scheduleHide],
   );
 
-  /** Leaving the code, or the window, drops both affordances. */
+  /** Leaving the code entirely is a real "gone" signal, so it does not wait out the grace period. */
   const onMouseLeave = useCallback(() => {
     lastPoint.current = null;
     setSymbolHighlight(null);
