@@ -33,6 +33,10 @@ required-features = ["app", "mcp"]
 
 [features]
 default = ["app"]
+# Standalone builds: `tauri::is_dev()` is `!cfg!(feature = "custom-protocol")`, so without this the WebView is
+# pointed at `devUrl` and a plain `cargo build` binary only works while Vite is running. The Tauri CLI enables
+# this feature for `tauri build`; `cargo build --features custom-protocol` is the manual equivalent.
+custom-protocol = ["tauri/custom-protocol"]
 # The Tauri app. scripts/prepare-mcp.mjs builds the sidecar with `--no-default-features
 # --features mcp`, so it does not compile Tauri and the rest of the app.
 app = [
