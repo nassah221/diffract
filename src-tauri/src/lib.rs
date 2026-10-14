@@ -9,6 +9,7 @@ mod commands;
 pub mod core;
 mod env_fix;
 pub mod github;
+pub mod lsp;
 mod open_link;
 mod state;
 #[cfg(target_os = "macos")]
@@ -53,7 +54,7 @@ fn init_state(app: &tauri::App) -> anyhow::Result<AppState> {
         let _ = handle.emit("threads-changed", serde_json::json!({ "sessionId": session_id }));
     }));
     let github = Arc::new(GithubService::new(store.clone()));
-    Ok(AppState { store, agents, github })
+    Ok(AppState { store, agents, github, lsp: crate::lsp::manager::LspManager::new() })
 }
 
 const REPORT_ISSUE_MENU_ID: &str = "report-issue";
@@ -213,6 +214,9 @@ pub fn run() {
             commands::files::list_tree,
             commands::files::read_file,
             commands::files::read_file_base64,
+            commands::lsp::lsp_eligible,
+            commands::lsp::lsp_definition,
+            commands::lsp::lsp_status,
             commands::comments::get_session,
             commands::comments::list_threads,
             commands::comments::list_repo_threads,
@@ -277,7 +281,10 @@ pub fn run() {
         .run(|app, event| {
             if let tauri::RunEvent::Exit = event {
                 if let Some(state) = app.try_state::<AppState>() {
-                    tauri::async_runtime::block_on(state.agents.shutdown());
+                    tauri::async_runtime::block_on(async {
+                        state.agents.shutdown().await;
+                        state.lsp.shutdown().await;
+                    });
                 }
             }
         });

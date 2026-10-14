@@ -46,6 +46,7 @@ app = [
   "dep:tauri-plugin-process",
   "dep:tauri-plugin-system-fonts",
   "dep:thiserror",
+  "dep:parking_lot",
   "dep:uuid",
   "dep:chrono",
   "dep:tracing",
@@ -78,6 +79,7 @@ tokio = { version = "1.53.1", features = ["full"] }
 anyhow = "1.0.104"
 rmcp = { version = "3.5.0", default-features = false, features = ["server", "transport-io"], optional = true }
 thiserror = { version = "2.0.21", optional = true }
+parking_lot = { version = "0.12", optional = true }
 uuid = { version = "1.26.1", features = ["v4", "serde"], optional = true }
 chrono = { version = "0.4.45", features = ["serde"], optional = true }
 tracing = { version = "0.1.44", optional = true }

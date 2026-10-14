@@ -5,4 +5,5 @@ pub mod diff;
 pub mod feedback;
 pub mod files;
 pub mod github;
+pub mod lsp;
 pub mod repo;
