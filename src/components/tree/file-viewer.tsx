@@ -22,6 +22,8 @@ interface FileViewerProps {
   threads: CommentThreadType[];
   commentActions: CommentActions;
   sessionId: string | null;
+  /** A line to flash after a jump, so the destination is obvious. */
+  glowLine?: number | null;
 }
 
 export interface FileViewerHandle {
@@ -90,6 +92,7 @@ export const FileViewer = forwardRef<FileViewerHandle, FileViewerProps>(function
     threads,
     commentActions,
     sessionId,
+    glowLine,
   } = props;
 
   const [pendingSelection, setPendingSelection] = useViewState<LineSelection | null>(`tree:composer:${filePath}`, null);
@@ -279,7 +282,7 @@ export const FileViewer = forwardRef<FileViewerHandle, FileViewerProps>(function
 
     return (
       <>
-        <tr className='group/row'>
+        <tr className={cn('group/row', lineNum === glowLine && 'jump-glow')}>
           <CommentLineNumber
             lineNumber={lineNum}
             isSelected={selected}

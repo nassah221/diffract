@@ -34,6 +34,8 @@ export interface HoverState {
 export function useSymbolHover(options: { ref: string; files: DiffFile[]; enabled: boolean }) {
   const { ref, files, enabled } = options;
   const [card, setCard] = useState<HoverState | null>(null);
+  /** True while ⌘ is held over a symbol, so the pointer can show that a click will do something. */
+  const [clickable, setClickable] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const cache = useRef(new Map<string, LspHover | null>());
   /** Only ever set while the card on screen belongs to that key. */
@@ -114,6 +116,7 @@ export function useSymbolHover(options: { ref: string; files: DiffFile[]; enable
       if (!found) {
         over.current = null;
         setSymbolHighlight(null);
+        setClickable(false);
         scheduleHide();
         return;
       }
@@ -121,6 +124,7 @@ export function useSymbolHover(options: { ref: string; files: DiffFile[]; enable
       cancelGrace();
       // ⌘ previews the jump, and that affordance is immediate — it answers "what would a click do".
       setSymbolHighlight(event.metaKey ? found.range : null);
+      setClickable(event.metaKey);
 
       const { target, lineText, key } = found;
       if (over.current === key) {
@@ -172,6 +176,7 @@ export function useSymbolHover(options: { ref: string; files: DiffFile[]; enable
   const onMouseLeave = useCallback(() => {
     lastPoint.current = null;
     setSymbolHighlight(null);
+    setClickable(false);
     hide();
   }, [hide]);
 
@@ -181,9 +186,12 @@ export function useSymbolHover(options: { ref: string; files: DiffFile[]; enable
       const point = lastPoint.current;
       if (!metaKey || !enabled || !point) {
         setSymbolHighlight(null);
+        setClickable(false);
         return;
       }
-      setSymbolHighlight(resolve(point.x, point.y)?.range ?? null);
+      const found = resolve(point.x, point.y);
+      setSymbolHighlight(found?.range ?? null);
+      setClickable(!!found);
     };
     const onKeyDown = (event: KeyboardEvent) => event.key === 'Meta' && sync(true);
     const onKeyUp = (event: KeyboardEvent) => event.key === 'Meta' && sync(false);
@@ -199,5 +207,5 @@ export function useSymbolHover(options: { ref: string; files: DiffFile[]; enable
     };
   }, [enabled, resolve]);
 
-  return { onMouseMove, onMouseLeave, card, cardRef };
+  return { onMouseMove, onMouseLeave, card, cardRef, clickable };
 }

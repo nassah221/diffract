@@ -46,6 +46,9 @@ import { modKey } from '../../lib/platform';
 import { handleCopyShortcut } from '../../lib/file-copy';
 import { useRestoredScroll, useViewState } from '../../lib/view-state';
 
+/** How long the landing line stays flashed after a jump; matches the `.jump-glow` animation length. */
+const JUMP_GLOW_MS = 2400;
+
 function formatTreeThreadsForCopy(threads: CommentThread[]): string {
   const unresolvedThreads = threads.filter(
     (t) => !isThreadResolved(t) && t.filePath !== GENERAL_THREAD_FILE_PATH,
@@ -173,6 +176,10 @@ export function TreePage() {
     placeholderData: keepPreviousData,
   });
 
+  // Flash the destination line after a jump so it reads as "here". `at` re-arms it: jumping to the same line
+  // twice should glow the second time too.
+  const [glow, setGlow] = useState<{ line: number; at: number } | null>(null);
+
   useEffect(() => {
     // Wait for the target file's own content (`keepPreviousData` leaves the previous file's in place while the
     // new one loads) and for the viewer itself, which is not mounted until the skeleton is gone. Stripping the
@@ -181,11 +188,20 @@ export function TreePage() {
       return;
     }
     fileViewerRef.current.revealLine(jumpLine);
+    setGlow({ line: jumpLine, at: Date.now() });
     setCameFromJump(true);
     const next = new URLSearchParams(searchParams);
     next.delete('line');
     setSearchParams(next, { replace: true });
   }, [hasJump, jumpLine, isFileMode, fileContent, fileFetching, threadsFetched, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!glow) {
+      return;
+    }
+    const timer = window.setTimeout(() => setGlow(null), JUMP_GLOW_MS);
+    return () => window.clearTimeout(timer);
+  }, [glow]);
 
   const { data: entriesData, isFetching: entriesFetching } = useQuery({
     ...treeEntriesOptions(navPath || undefined),
@@ -424,6 +440,7 @@ export function TreePage() {
         threads={fileThreads}
         commentActions={commentActions}
         sessionId={sessionId}
+        glowLine={glow?.line ?? null}
       />
     );
   };

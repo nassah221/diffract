@@ -746,3 +746,22 @@ dialog {
   text-decoration-color: rgba(96, 165, 250, 0.8);
 }
 
+/* Where a ⌘-jump landed: flash the line, so "here" is obvious without hunting for the caret. */
+@keyframes diffity-jump-glow {
+  from {
+    background-color: color-mix(in srgb, var(--color-accent) 26%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.jump-glow {
+  animation: diffity-jump-glow 1.2s ease-out 2;
+}
+
+/* ⌘ held over a symbol: the pointer itself shows that a click will follow it. */
+.lsp-clickable [data-code-cell] {
+  cursor: pointer;
+}
+

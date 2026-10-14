@@ -718,7 +718,7 @@ export function DiffPage(props: DiffPageProps) {
   return (
     <ReviewStateProvider sessionId={reviewsEnabled ? sessionId : null} prMode={!!githubDetails && !ownPr} ownPrNumber={ownPr && githubDetails && refParam === prDiffRef(githubDetails) ? githubDetails.prNumber : null}>
     <div
-      className="flex flex-col h-screen bg-frame text-text font-sans"
+      className={`flex flex-col h-screen bg-frame text-text font-sans${symbolHover.clickable ? ' lsp-clickable' : ''}`}
       onMouseDown={definitionJump.onMouseDown}
       onMouseMove={symbolHover.onMouseMove}
       onMouseLeave={symbolHover.onMouseLeave}
