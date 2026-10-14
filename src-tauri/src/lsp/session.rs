@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use tokio::sync::Mutex as AsyncMutex;
 
 use crate::lsp::client::Client;
-use crate::lsp::{path_from_uri, uri_from_path, Error, Location, Result};
+use crate::lsp::{canonical, path_from_uri, uri_from_path, Error, Location, Result};
 
 /// gopls answers `initialize` immediately (measured 0.03s) and loads packages lazily, so this only covers a
 /// server that never starts talking.
@@ -38,7 +38,7 @@ impl Session {
     pub async fn start(bin: &Path, root: &Path) -> Result<Self> {
         // gopls answers with resolved paths (`/tmp` comes back as `/private/tmp`), so the root must be
         // resolved too or every in-repo target looks like it lives outside the repo.
-        let root = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
+        let root = canonical(root);
         let client = Client::spawn(bin, &root).await?;
 
         let root_uri = uri_from_path(&root);
@@ -91,7 +91,7 @@ impl Session {
     /// are authoritative for gopls, so a file that changed under us (the user edited it, or this app reverted a
     /// hunk) has to be pushed as a `didChange` or every later answer comes from the stale text.
     pub async fn ensure_open(&self, absolute: &Path) -> Result<()> {
-        let resolved = std::fs::canonicalize(absolute).unwrap_or_else(|_| absolute.to_path_buf());
+        let resolved = canonical(absolute);
         let path = resolved.clone();
         // Stat and read together so the mtime cannot drift between the two.
         let (text, modified) = tokio::task::spawn_blocking(move || {
@@ -147,7 +147,7 @@ impl Session {
 
     /// `line`/`character` are 0-based UTF-16, the units LSP uses and the DOM already gives us.
     pub async fn definition(&self, absolute: &Path, line: u32, character: u32) -> Result<Vec<Location>> {
-        let resolved = std::fs::canonicalize(absolute).unwrap_or_else(|_| absolute.to_path_buf());
+        let resolved = canonical(absolute);
         let result = self
             .client
             .request(

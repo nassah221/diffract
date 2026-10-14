@@ -8,8 +8,6 @@ pub use manager::LspManager;
 
 use std::path::{Path, PathBuf};
 
-pub(crate) const METHOD_NOT_FOUND: i64 = -32601;
-
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Location {

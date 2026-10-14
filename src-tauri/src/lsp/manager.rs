@@ -3,27 +3,24 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use parking_lot::Mutex;
 use tokio::sync::Mutex as AsyncMutex;
 
 use crate::agents::detect::{find_in_path, is_executable};
 use crate::lsp::session::Session;
-use crate::lsp::{Error, Result};
+use crate::lsp::{canonical, Error, Result};
 
 const SERVER: &str = "gopls";
 /// A session nobody has touched for this long is stopped when the next request arrives. The app has no
 /// repo-switch event on this side and supports several windows, so eviction has to be time-based.
 const IDLE_TTL: Duration = Duration::from_secs(600);
-/// How long a detection result (including a negative one) is trusted.
-const DETECT_TTL: Duration = Duration::from_secs(30);
 
 type Slot = Arc<AsyncMutex<Option<Arc<Session>>>>;
 
 pub struct LspManager {
     slots: Mutex<HashMap<PathBuf, Slot>>,
-    detected: AsyncMutex<Option<(Option<PathBuf>, Instant)>>,
 }
 
 impl Default for LspManager {
@@ -36,14 +33,13 @@ impl LspManager {
     pub fn new() -> Self {
         Self {
             slots: Mutex::new(HashMap::new()),
-            detected: AsyncMutex::new(None),
         }
     }
 
     /// The session for `root`, started on first use. Concurrent callers for the same root share one server:
     /// the start happens under that repo's slot lock.
     pub async fn session(&self, root: &Path) -> Result<Arc<Session>> {
-        let root = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
+        let root = canonical(root);
 
         for stale in self.idle_roots() {
             self.stop(&stale).await;
