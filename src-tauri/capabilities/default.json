@@ -20,8 +20,6 @@
       ]
     },
     "window-state:default",
-    "updater:default",
-    "process:allow-restart",
     "system-fonts:default",
     "core:webview:allow-create-webview-window",
     "core:window:allow-set-focus",

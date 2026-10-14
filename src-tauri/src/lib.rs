@@ -21,7 +21,7 @@ use crate::agents::AgentManager;
 use crate::core::store::Store;
 use crate::github::GithubService;
 use tauri::menu::{Menu, MenuItem, HELP_SUBMENU_ID};
-use tauri::{AppHandle, Emitter, EventTarget, Manager, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_deep_link::DeepLinkExt;
 
 pub use state::AppState;
@@ -58,48 +58,22 @@ fn init_state(app: &tauri::App) -> anyhow::Result<AppState> {
 }
 
 const REPORT_ISSUE_MENU_ID: &str = "report-issue";
-const WHATS_NEW_MENU_ID: &str = "whats-new";
-const CHECK_UPDATES_MENU_ID: &str = "check-for-updates";
 const INSTALL_CLI_MENU_ID: &str = "install-cli";
 
-/// Tauri's default menu plus Diffity → Check for Updates… and Install 'diffity' Command, and Help → What's New
-/// and Report an Issue….
+/// Tauri's default menu plus Diffity → Install ‘diffity’ Command…, and Help → Report an Issue….
 fn app_menu<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let menu = Menu::default(handle)?;
+    #[cfg(target_os = "macos")]
     if let Some(app_submenu) = menu.items()?.first().and_then(|item| item.as_submenu().cloned()) {
-        let mut position = 1;
-        if !dev_build() {
-            let check = MenuItem::with_id(handle, CHECK_UPDATES_MENU_ID, "Check for Updates…", true, None::<&str>)?;
-            app_submenu.insert(&check, position)?;
-            position += 1;
-        }
-        #[cfg(target_os = "macos")]
-        {
-            let label = format!("Install ‘{}’ Command…", cli_install::command_name());
-            let install = MenuItem::with_id(handle, INSTALL_CLI_MENU_ID, label, true, None::<&str>)?;
-            app_submenu.insert(&install, position)?;
-        }
+        let label = format!("Install ‘{}’ Command…", cli_install::command_name());
+        let install = MenuItem::with_id(handle, INSTALL_CLI_MENU_ID, label, true, None::<&str>)?;
+        app_submenu.insert(&install, 1)?;
     }
-    let whats_new = MenuItem::with_id(handle, WHATS_NEW_MENU_ID, "What’s New in Diffity", true, None::<&str>)?;
     let report = MenuItem::with_id(handle, REPORT_ISSUE_MENU_ID, "Report an Issue…", true, None::<&str>)?;
     if let Some(help) = menu.get(HELP_SUBMENU_ID).and_then(|item| item.as_submenu().cloned()) {
-        help.append(&whats_new)?;
         help.append(&report)?;
     }
     Ok(menu)
-}
-
-/// Sends a menu command to the focused window, or the main one when none has focus.
-fn emit_to_focused<R: Runtime>(app: &AppHandle<R>, event: &str) {
-    let windows = app.webview_windows();
-    let label = windows
-        .values()
-        .find(|window| window.is_focused().unwrap_or(false))
-        .map(|window| window.label().to_string())
-        .unwrap_or_else(|| "main".to_string());
-    if let Err(e) = app.emit_to(EventTarget::webview_window(label), event, ()) {
-        tracing::warn!("could not send {event}: {e}");
-    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -123,20 +97,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_system_fonts::init())
         .plugin(tauri_plugin_deep_link::init())
         .menu(app_menu)
         .on_menu_event(|app, event| {
-            if event.id() == WHATS_NEW_MENU_ID {
-                emit_to_focused(app, "open-whats-new");
-                return;
-            }
-            if event.id() == CHECK_UPDATES_MENU_ID {
-                emit_to_focused(app, "check-for-updates");
-                return;
-            }
             #[cfg(target_os = "macos")]
             if event.id() == INSTALL_CLI_MENU_ID {
                 cli_install::install_with_feedback(app);

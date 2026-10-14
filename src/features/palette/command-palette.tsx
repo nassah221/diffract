@@ -17,7 +17,7 @@ import { useRepoNav } from '../../hooks/use-repo';
 import { useTheme } from '../../hooks/use-theme';
 import { useGitHubAuth, useGitHubPr, useRecentCommits } from '../../hooks/use-repo-state';
 import { isOpenThread, useRepoThreads } from '../../hooks/use-repo-threads';
-import { openComments, openSettings, openShortcuts, openWhatsNew, toggleSidebar } from '../../lib/ui-store';
+import { openComments, openSettings, openShortcuts, toggleSidebar } from '../../lib/ui-store';
 import { goToThread } from '../../lib/thread-location';
 import { treePathsOptions } from '../../queries/tree';
 import { openRepoAt, shortPath, useRecentRepos } from '../welcome/recent-repos';
@@ -27,9 +27,8 @@ import { checkoutPullRequest } from '../pr/pr-checkout';
 import { prDiffRef } from '../../components/layout/ref-menu';
 import {
   AlertCircleIcon, ChangesIcon, CommentIcon, EditorIcon, FetchIcon, FileIcon, FilesIcon, GitCommitIcon, GitPullRequestIcon,
-  HomeIcon, KeyboardIcon, MoonIcon, WrapIcon, SparkleIcon, PullIcon, PushIcon, RefreshIcon, RevealIcon, SearchIcon, SettingsIcon, SidebarIcon,
+  HomeIcon, KeyboardIcon, MoonIcon, WrapIcon, SparkleIcon, PullIcon, PushIcon, RevealIcon, SearchIcon, SettingsIcon, SidebarIcon,
 } from '../../components/ui/icon';
-import { checkForUpdatesAndTell } from '../updates/updater';
 import { openActivity } from '../claude/run-activity';
 import {
   closePalette, fuzzyScore, recentActionIds, recentFiles, rememberAction, rememberFile, usePalette,
@@ -78,8 +77,6 @@ function useGlobalActions(): PaletteAction[] {
     { id: 'settings', title: 'Settings', group: 'Actions', hint: shortcutHint('settings'), icon: <SettingsIcon size="sm" />, run: openSettings },
     { id: 'shortcuts', title: 'Keyboard shortcuts', group: 'Actions', hint: shortcutHint('shortcuts'), icon: <KeyboardIcon size="sm" />, run: openShortcuts },
     { id: 'report-issue', title: 'Report an issue…', group: 'Actions', keywords: 'bug feedback github idea feature request help', icon: <AlertCircleIcon size="sm" />, run: reportIssue },
-    { id: 'check-updates', title: 'Check for updates…', group: 'Actions', keywords: 'update upgrade new version release', icon: <RefreshIcon size="sm" />, run: () => { void checkForUpdatesAndTell(); } },
-    { id: 'whats-new', title: 'What’s new in Diffity', group: 'Actions', keywords: 'release notes changelog updates new features version', icon: <SparkleIcon size="sm" />, run: openWhatsNew },
   ], [nav, theme, toggleTheme, wrapLines]);
 }
 
