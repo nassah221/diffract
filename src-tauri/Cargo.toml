@@ -3,14 +3,14 @@ name = "diffity-desktop"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-default-run = "diffity-desktop"
+default-run = "diffity-dev"
 
 [lib]
 name = "diffity_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]
-name = "diffity-desktop"
+name = "diffity-dev"
 path = "src/main.rs"
 required-features = ["app"]
 
