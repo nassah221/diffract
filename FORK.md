@@ -59,7 +59,7 @@ upstream's spelling on purpose:
 - webview storage keys (`diffity-theme`, `diffity-diff-palette`)
 - bundled sidecar binaries `diffity-cli` and `diffity-mcp` (Tauri `externalBin`), and the `DIFFITY_CHANNEL` build env var
 - Rust crate and lib names (`diffity-desktop`, `diffity_desktop_lib`) — internal, and renaming them churns files upstream edits
-- upstream's `web/` site directory, `src-tauri/icons/`, and the GitHub workflow files
+- upstream's `web/` site directory (a marketing site this fork does not host)
 
 ## Divergences from upstream
 
@@ -74,6 +74,11 @@ upstream's spelling on purpose:
   three offset layers, fringes behind the base, so the effect survives the mask-and-solid-fill model). The `.icns`
   and PNG ladder are rasterised from the same artwork. The Liquid Glass `Assets.car` is *not* committed: compiling
   an Icon Composer document needs full Xcode (`actool`), which this machine does not have.
+- **CI and releases are the fork's own**: `ci.yml` runs the frontend checks on Ubuntu and the Rust unit tests on
+  macOS, after `pnpm build` — `tauri::generate_context!()` reads `frontendDist` at compile time, and that missing
+  step is why upstream's CI failed here. `release.yml` builds a universal DMG on a `v*` tag and publishes it
+  (unsigned when the Apple secrets are absent, signed and notarised when they are), and `dev-build.yml` keeps a
+  rolling `dev` prerelease on the dev-channel config. Upstream's updater signing and website deploy are gone.
 - **The upstream update check is gone**: the launch/recheck hooks and their toast, the app-menu item, the Settings
   control, the palette commands, the release-notes fetch, and the updater plugin with its capability, endpoint, pubkey
   and artifact signing. It pointed at upstream's release feed, so an installed build would have offered to install
@@ -82,7 +87,6 @@ upstream's spelling on purpose:
 ## Known follow-ups
 
 - "Report an Issue…" still opens upstream's tracker (`src/lib/report-issue.ts`, `src-tauri/src/commands/feedback.rs`).
-- `.github/workflows/release.yml` and `dev-build.yml` are upstream's and still expect updater artifacts and signing secrets.
 - `src-tauri/icons/**/*.icon` are sources only: on a Mac with Xcode, recompile them into `Assets.car` for the
   Liquid Glass icon, otherwise the rasterised `.icns` is what ships and shows.
 - The boot splash in `index.html` still draws upstream's mark (it flashes for a few hundred ms), and Windows'
