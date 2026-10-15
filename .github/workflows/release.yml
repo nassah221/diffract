@@ -96,16 +96,35 @@ jobs:
           print(icons)
           PY
 
+      # An unset secret still arrives as an empty string, and tauri signs when these variables are merely
+      # present: an empty APPLE_CERTIFICATE made it import a zero-byte .p12 and fail the bundle. Export
+      # them only when there is a certificate to use, so a secret-less run ships an unsigned DMG.
+      - name: Export Apple credentials, if any
+        env:
+          CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          NOTARY_ID: ${{ secrets.APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "$CERTIFICATE" ]; then
+            {
+              echo "APPLE_CERTIFICATE=$CERTIFICATE"
+              echo "APPLE_CERTIFICATE_PASSWORD=$CERTIFICATE_PASSWORD"
+              echo "APPLE_SIGNING_IDENTITY=$SIGNING_IDENTITY"
+              echo "APPLE_ID=$NOTARY_ID"
+              echo "APPLE_PASSWORD=$NOTARY_PASSWORD"
+              echo "APPLE_TEAM_ID=$TEAM_ID"
+            } >> "$GITHUB_ENV"
+            echo "Apple credentials present: the DMG will be signed and notarised."
+          else
+            echo "No Apple credentials: the DMG will be unsigned."
+          fi
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Apple credentials are optional; without them the DMG is unsigned.
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           projectPath: .
           tagName: ${{ steps.version.outputs.tag }}
