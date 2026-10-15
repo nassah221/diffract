@@ -1,16 +1,20 @@
 // Regenerates every derived icon in src-tauri/icons from the Icon Composer
-// document src-tauri/icons/diffity-logo.icon (the single source of truth), and
-// the amber "Diffity Dev" set in src-tauri/icons/dev from dev/diffity-dev.icon
+// document src-tauri/icons/diffract.icon (the single source of truth), and
+// the amber "Diffract Dev" set in src-tauri/icons/dev from dev/diffract-dev.icon
 // (used by tauri.dev.conf.json). `node scripts/generate-icons.mjs dev` builds
 // only the dev set; `main` only the release one.
 //
-// - Assets.car: compiled by Apple's actool. Listed in bundle.icon, so the Tauri
-//   bundler copies it to Contents/Resources and sets CFBundleIconName from it.
-//   (Tauri can compile a `.icon` itself, but its in-process actool call crashes:
-//   https://github.com/tauri-apps/tauri/issues/15315.)
-// - icon.icns + PNGs + icon.ico: rendered by Icon Composer's ictool, then run
-//   through `tauri icon`. icon.icns is CFBundleIconFile (pre-Assets.car
-//   fallback) and the `tauri dev` Dock icon.
+// - Assets.car: compiled by Apple's actool. Add it back to `bundle.icon` in
+//   tauri.conf.json and tauri.dev.conf.json when you compile it; this fork ships
+//   the raster `.icns` + PNGs instead, because compiling an Icon Composer
+//   document needs Xcode (actool 26 and Icon Composer's ictool) and the dev
+//   machine this fork was set up on has only CommandLineTools. Tauri could
+//   compile a `.icon` itself, but its in-process actool call crashes:
+//   https://github.com/tauri-apps/tauri/issues/15315.
+// - icon.icns + PNGs: rendered by Icon Composer's ictool, then run through
+//   `tauri icon`. icon.icns is CFBundleIconFile, the fallback macOS uses when
+//   there is no Assets.car. `icon.ico` is not generated: this fork has no
+//   Windows target.
 //
 // Requires Xcode 26+ (actool 26 and Icon Composer's `ictool`).
 import { execFileSync } from 'node:child_process';
@@ -21,8 +25,8 @@ import { fileURLToPath } from 'node:url';
 
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), '..');
 const variants = {
-  main: { iconsDir: join(rootDir, 'src-tauri', 'icons'), name: 'diffity-logo' },
-  dev: { iconsDir: join(rootDir, 'src-tauri', 'icons', 'dev'), name: 'diffity-dev' },
+  main: { iconsDir: join(rootDir, 'src-tauri', 'icons'), name: 'diffract' },
+  dev: { iconsDir: join(rootDir, 'src-tauri', 'icons', 'dev'), name: 'diffract-dev' },
 };
 const only = process.argv[2];
 if (only && !variants[only]) {
@@ -110,7 +114,6 @@ function generate({ iconsDir, name }) {
       '128x128@2x.png',
       'icon.png',
       'icon.icns',
-      'icon.ico',
     ]) {
       copyFileSync(join(tauriOut, file), join(iconsDir, file));
     }

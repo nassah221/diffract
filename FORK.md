@@ -68,6 +68,12 @@ upstream's spelling on purpose:
   pointer cursor.
 - **Browser dev mock** (`src/lib/mock-api.ts`, `mock-api-agents.ts`, `mock-fixtures.ts`): runs the real frontend with
   canned IPC when there is no Tauri host, and `?mockDiff=<url>` can serve a recorded diff.
+- **New icon artwork**: a beam entering a prism and leaving as three rays, with the colour fringing a lens would
+  leave. It lives in `src/components/icons/brand-logo.tsx` (the in-app mark) and in
+  `src-tauri/icons/diffract.icon/` plus `src-tauri/icons/dev/diffract-dev.icon/` (the Icon Composer documents:
+  three offset layers, fringes behind the base, so the effect survives the mask-and-solid-fill model). The `.icns`
+  and PNG ladder are rasterised from the same artwork. The Liquid Glass `Assets.car` is *not* committed: compiling
+  an Icon Composer document needs full Xcode (`actool`), which this machine does not have.
 - **The upstream update check is gone**: the launch/recheck hooks and their toast, the app-menu item, the Settings
   control, the palette commands, the release-notes fetch, and the updater plugin with its capability, endpoint, pubkey
   and artifact signing. It pointed at upstream's release feed, so an installed build would have offered to install
@@ -77,4 +83,7 @@ upstream's spelling on purpose:
 
 - "Report an Issue…" still opens upstream's tracker (`src/lib/report-issue.ts`, `src-tauri/src/commands/feedback.rs`).
 - `.github/workflows/release.yml` and `dev-build.yml` are upstream's and still expect updater artifacts and signing secrets.
-- The app icon and the in-app brand mark (the glyph beside the wordmark) are still upstream's artwork.
+- `src-tauri/icons/**/*.icon` are sources only: on a Mac with Xcode, recompile them into `Assets.car` for the
+  Liquid Glass icon, otherwise the rasterised `.icns` is what ships and shows.
+- The boot splash in `index.html` still draws upstream's mark (it flashes for a few hundred ms), and Windows'
+  `icon.ico` was dropped along with the upstream artwork since this fork has no Windows target.
