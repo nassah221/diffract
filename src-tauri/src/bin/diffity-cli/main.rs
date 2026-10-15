@@ -1,21 +1,23 @@
-//! `diffity`: opens a repository, a diff or a file in the Diffity app through a `diffity://open` link.
-//! It ships inside the app bundle (Contents/MacOS/diffity-cli); Diffity → Install 'diffity' Command
+//! `diffract`: opens a repository, a diff or a file in the Diffract app through a `diffract://open` link.
+//! It ships inside the app bundle (Contents/MacOS/diffity-cli); Diffract → Install 'diffract' Command
 //! links it into PATH.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
-const HELP: &str = "\
-Open a repository, a diff or a file in Diffity.
+fn help() -> String {
+    format!(
+        "\
+Open a repository, a diff or a file in Diffract.
 
 Usage:
-  diffity [path | pull request URL] [options]
+  {name} [path | pull request URL] [options]
 
 Arguments:
   path              A folder or file inside a Git repository (default: current folder).
                     A file opens in the Files tab unless --ref is given.
   pull request URL  A GitHub pull request to check out and review, in the current
-                    repository or the local clone Diffity knows about.
+                    repository or the local clone Diffract knows about.
 
 Options:
   -r, --ref <ref>   The diff to show: work (uncommitted, the default), staged, unstaged,
@@ -25,14 +27,17 @@ Options:
   -h, --help        Show this help
 
 Examples:
-  diffity                       Uncommitted changes in the current repository
-  diffity ~/code/app            Uncommitted changes in ~/code/app
-  diffity --ref main            Everything on this branch since it left main
-  diffity --ref HEAD~1..HEAD    The last commit
-  diffity https://github.com/owner/repo/pull/42
-                                Pull request #42
-  diffity src/app.ts            src/app.ts in the Files tab
-";
+  {name}                       Uncommitted changes in the current repository
+  {name} ~/code/app            Uncommitted changes in ~/code/app
+  {name} --ref main            Everything on this branch since it left main
+  {name} --ref HEAD~1..HEAD    The last commit
+  {name} https://github.com/owner/repo/pull/42
+                                 Pull request #42
+  {name} src/app.ts            src/app.ts in the Files tab
+",
+        name = name()
+    )
+}
 
 #[derive(Default)]
 struct Options {
@@ -131,13 +136,18 @@ fn link(params: &[(&str, String)]) -> String {
     format!("{}://open?{}", scheme(), query.join("&"))
 }
 
-/// The dev build ships a CLI that talks to "Diffract Dev" over its own scheme.
-fn scheme() -> &'static str {
+/// The command the app installs, and the deep-link scheme it opens: `diffract`, or `diffract-dev`
+/// on the dev channel so a dev build never replaces the release's command.
+fn name() -> &'static str {
     if option_env!("DIFFITY_CHANNEL") == Some("dev") {
         "diffract-dev"
     } else {
         "diffract"
     }
+}
+
+fn scheme() -> &'static str {
+    name()
 }
 
 /// The app checks out the PR in the current repository when its remote matches, else in a clone it knows.
@@ -192,13 +202,13 @@ fn open_link(options: Options) -> Result<String, String> {
     Ok(link(&params))
 }
 
-/// The real binary, with any `/usr/local/bin/diffity` symlink resolved.
+/// The real binary, with any `/usr/local/bin/diffract` symlink resolved.
 fn own_path() -> Option<PathBuf> {
     std::env::current_exe().ok().and_then(|p| std::fs::canonicalize(p).ok())
 }
 
-/// The `.app` this binary ships in, so the link opens that copy of Diffity rather than whichever
-/// one macOS has registered for `diffity://`.
+/// The `.app` this binary ships in, so the link opens that copy of Diffract rather than whichever
+/// one macOS has registered for `diffract://`.
 fn own_bundle() -> Option<PathBuf> {
     own_path()?
         .ancestors()
@@ -216,7 +226,7 @@ fn launch(url: &str) -> Result<(), String> {
         .status()
         .map_err(|e| format!("could not run open: {e}"))?;
     if !status.success() {
-        return Err("could not open Diffity. Is it installed?".into());
+        return Err("could not open Diffract. Is it installed?".into());
     }
     Ok(())
 }
@@ -225,16 +235,16 @@ fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let result = match parse(&args) {
         Ok(Action::Help) => {
-            print!("{HELP}");
+            print!("{}", help());
             Ok(())
         }
         Ok(Action::Open(options)) => open_link(options).and_then(|url| launch(&url)),
-        Err(message) => Err(format!("{message}\n\nRun `diffity --help` for usage.")),
+        Err(message) => Err(format!("{message}\n\nRun `{} --help` for usage.", name())),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(message) => {
-            eprintln!("diffity: {message}");
+            eprintln!("{}: {message}", name());
             ExitCode::FAILURE
         }
     }
@@ -252,7 +262,7 @@ mod tests {
     fn encodes_query_values() {
         assert_eq!(
             link(&[("path", "/Users/me/my repo".into()), ("ref", "main...HEAD".into())]),
-            "diffity://open?path=/Users/me/my%20repo&ref=main...HEAD"
+            "diffract://open?path=/Users/me/my%20repo&ref=main...HEAD"
         );
         assert_eq!(encode("a&b=c#d?é"), "a%26b%3Dc%23d%3F%C3%A9");
     }
