@@ -1,23 +1,36 @@
-<img src="./.github/logo.png" width="80" />
-
 # Diffract
 
-[![Latest release](https://img.shields.io/github/v/release/nilbuild/diffity?display_name=tag&sort=semver&cacheSeconds=3600)](https://github.com/nilbuild/diffity/releases/latest)
-[![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey)](https://github.com/nilbuild/diffity/releases/latest)
+[![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey)](https://github.com/nassah221/diffract/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-**Diffract is a fork of [Diffity](https://github.com/nilbuild/diffity).** It adds Go navigation (gopls) inside the
-diff — hover for a signature, ⌘-click to follow a definition — and otherwise stays close to upstream.
-[FORK.md](./FORK.md) records what diverges, how to sync with upstream, and the licence and attribution terms.
+**Diffract is a fork of [Diffity](https://github.com/nilbuild/diffity).** This fork adds Go navigation powered by `gopls`
+inside the review diff. Diffity is MIT-licensed, © Kamran Ahmed; changes made in this fork are © 2026 nassah221.
+[FORK.md](./FORK.md) records the differences, upstream sync instructions, and attribution terms.
 
 Diffract is a Mac app for reviewing code changes, yours or your agent's, GitHub-style, with Claude Code in the loop.
 
-<img src="./.github/screenshots/hero.png" alt="Diffity showing uncommitted changes with a comment thread answered by Claude" />
+<img src="./.github/screenshots/hero.png" alt="Diffract showing uncommitted changes with a comment thread answered by Claude" />
 
-[![Download for macOS](https://img.shields.io/badge/Download_for_macOS-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/nilbuild/diffity/releases/latest)
-[![Report an issue](https://img.shields.io/badge/Report_an_issue-ffffff?style=for-the-badge&logo=github&logoColor=black)](https://github.com/nilbuild/diffity/issues/new/choose)
+[![Download Diffract for macOS](https://img.shields.io/badge/Download_for_macOS-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/nassah221/diffract/releases)
+[![Report an issue](https://img.shields.io/badge/Report_an_issue-ffffff?style=for-the-badge&logo=github&logoColor=black)](https://github.com/nassah221/diffract/issues/new/choose)
 
-macOS 13.3 or later, Apple Silicon and Intel. The AI features need [Claude Code](https://docs.claude.com/en/docs/claude-code) (logged in) and Node.js.
+## Download and install
+
+Download the macOS DMG from [Diffract Releases](https://github.com/nassah221/diffract/releases), open it, and move Diffract to Applications. The app is currently unsigned: on first launch, Control-click (or right-click) Diffract and choose **Open**, then confirm. Alternatively, after moving it to Applications, run:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/Diffract.app
+```
+
+Updates are manual: install a newer DMG from Releases. Diffract has no in-app updater or **What's New** screen.
+
+## Requirements
+
+Diffract runs on macOS 13.3 or later; check each release for the architecture of its DMG. Claude Code (logged in) and Node.js are needed for AI features. Go navigation requires `gopls` to be installed and available to the app.
+
+## Build from source
+
+With Rust, Node.js, pnpm, and Xcode Command Line Tools installed, run `pnpm install` and then `pnpm tauri build` to build the app and DMG. The Liquid Glass icon catalog needs full Xcode to compile; without Xcode, the build ships with the rasterized `.icns` icon.
 
 | What can you do? | Description |
 |---|---|
@@ -31,7 +44,8 @@ macOS 13.3 or later, Apple Silicon and Intel. The AI features need [Claude Code]
 | [Browse and comment on any file](#browse-and-comment-on-any-file) | Comment on code outside the diff from the Files tab |
 | [Jump anywhere](#jump-anywhere) | ⌘P for files, ⌘K for commits, comments, PRs and every action |
 | [Switch projects](#switch-projects) | Keep your repos in a rail and switch with ⌘1–9 |
-| [Open from the terminal or your agent](#open-from-the-terminal-or-your-agent) | `diffity` opens a repo, a diff or a pull request URL in the app |
+| [Open from the terminal or your agent](#open-from-the-terminal-or-your-agent) | `diffract` opens a repo, a diff or a pull request URL in the app |
+| [Navigate Go code](#go-navigation) | Use gopls for hover documentation, inlay hints, definitions and implementations |
 
 ### Comment on your diff
 
@@ -95,25 +109,29 @@ macOS 13.3 or later, Apple Silicon and Intel. The AI features need [Claude Code]
 
 ### Open from the terminal or your agent
 
-> Run `diffity` in any repository to open it in the app, or pass a pull request URL to review it.
+> Run `diffract` in any repository to open it in the app, or pass a pull request URL to review it.
 
-Install the command once from the app menu: **Diffity → Install ‘diffity’ Command…**. It links the command into `/usr/local/bin` and asks for your password if that folder needs it.
+Install the command once from the app menu: **Diffract → Install ‘diffract’ Command…**. It links the command into `/usr/local/bin` and asks for your password if that folder needs it.
 
-<img src="./.github/screenshots/install-command.png" width="320" alt="The Diffity menu with Install ‘diffity’ Command…" />
+<img src="./.github/screenshots/install-command.png" width="320" alt="The original Diffity menu showing its command-install option" />
 
 ```sh
-diffity                                        # uncommitted changes in the current repository
-diffity ~/code/app                             # another repository
-diffity --ref main                             # everything on this branch since it left main
-diffity --ref HEAD~1..HEAD                     # the last commit
-diffity https://github.com/owner/repo/pull/42  # check out and review a pull request
-diffity src/app.ts                             # a file in the Files tab
-diffity -n                                     # in a new window
+diffract                                       # uncommitted changes in the current repository
+diffract ~/code/app                            # another repository
+diffract --ref main                            # everything on this branch since it left main
+diffract --ref HEAD~1..HEAD                    # the last commit
+diffract https://github.com/owner/repo/pull/42 # check out and review a pull request
+diffract src/app.ts                            # a file in the Files tab
+diffract -n                                    # in a new window
 ```
 
-`--ref` takes anything the ref picker does: `work`, `staged`, `unstaged`, a branch or commit, `<a>..<b>` or `<a>...<b>`. A pull request opens in the current repository if it is a clone of that repo, else in a clone Diffity already knows; with neither, Diffity offers to clone it. Run `diffity --help` for everything.
+`--ref` takes anything the ref picker does: `work`, `staged`, `unstaged`, a branch or commit, `<a>..<b>` or `<a>...<b>`. A pull request opens in the current repository if it is a clone of that repo, else in a clone Diffract already knows; with neither, Diffract offers to clone it. Run `diffract --help` for everything.
 
-Coding agents can run it too, so you can ask Claude Code to “open your changes in Diffity” before it opens a PR.
+Coding agents can run it too, so you can ask Claude Code to “open your changes in Diffract” before it opens a PR.
+
+### Go navigation
+
+Go navigation is Diffract's addition to Diffity. In Go (`.go`) files in the review diff, hover a symbol for its signature and documentation, use **⌘-click** to go to its definition or **⌘⌥-click** to go to an implementation, and see gopls inlay hints for parameter names and inferred types. The target opens in the app, with a brief highlight at the destination. This feature requires `gopls`; only Go files are supported.
 
 ### More
 
@@ -128,9 +146,9 @@ Coding agents can run it too, so you can ask Claude Code to “open your changes
   ```
 - **Colour-blind friendly colours.** Settings → General → Appearance switches the diff to blue and orange, in light and dark.
 - **Split or unified, light or dark.** Toggle the diff layout anytime; the theme follows your Mac unless you pick one in Settings.
-- **Updates itself.** New versions install in place, and What's New in the Help menu shows what changed.
+- **App identity.** Bundle ID: `com.diffract.app`; deep links use `diffract://` (`diffract-dev://` in development). App data is stored in `~/Library/Application Support/com.diffract.app/diffract.db`.
 
-Found a bug or have an idea? [Open an issue](https://github.com/nilbuild/diffity/issues/new/choose).
+Found a bug or have an idea? [Open an issue](https://github.com/nassah221/diffract/issues/new/choose).
 
 ## License
 

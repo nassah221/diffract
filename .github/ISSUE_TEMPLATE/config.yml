@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Download the latest release
-    url: https://github.com/nilbuild/diffity/releases/latest
-    about: Check you are on the newest version before reporting a bug.
+  - name: Download Diffract
+    url: https://github.com/nassah221/diffract/releases
+    about: Check available Diffract releases before reporting a bug.

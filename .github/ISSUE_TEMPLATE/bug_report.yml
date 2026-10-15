@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in Diffity is broken or behaves unexpectedly
+description: Something in Diffract is broken or behaves unexpectedly
 labels: [bug]
 body:
   - type: textarea
@@ -28,8 +28,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: Diffity version
-      description: Settings → About, or Diffity → About Diffity.
+      label: Diffract version
+      description: Settings → About, or Diffract → About Diffract.
       placeholder: "0.1.0"
     validations:
       required: true
