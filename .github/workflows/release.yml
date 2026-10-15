@@ -71,6 +71,31 @@ jobs:
           xcode-select -p
           xcodebuild -version
 
+      # tauri cannot compile an Icon Composer document itself: its in-process actool call crashes on them
+      # (tauri-apps/tauri#15315), which fails the whole bundle where Xcode exists. Use the repo's script,
+      # and tolerate it failing — the step below then just leaves the raster .icns to carry the icon.
+      - name: Compile the Liquid Glass icon catalog
+        continue-on-error: true
+        run: node scripts/generate-icons.mjs
+
+      - name: Ship the compiled catalog, not the Icon Composer source
+        run: |
+          python3 - <<'PY'
+          import json, os
+          path = 'src-tauri/tauri.conf.json'
+          source, compiled = 'icons/diffract.icon', 'icons/Assets.car'
+          conf = json.load(open(path))
+          icons = [i for i in conf['bundle']['icon'] if i != source]
+          if os.path.exists(os.path.join('src-tauri', compiled)):
+              icons.insert(0, compiled)
+              print('shipping', compiled)
+          else:
+              print('no catalog compiled; shipping the raster .icns only')
+          conf['bundle']['icon'] = icons
+          json.dump(conf, open(path, 'w'), indent=2)
+          print(icons)
+          PY
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
