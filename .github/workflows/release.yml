@@ -17,13 +17,6 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 90
     steps:
-      - name: The ref has to be a version tag
-        run: |
-          case "$GITHUB_REF" in
-            refs/tags/v*) ;;
-            *) echo "Not a v* tag: $GITHUB_REF" >&2; exit 1 ;;
-          esac
-
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
@@ -44,45 +37,32 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # `tauri build` runs this again from beforeBuildCommand (a no-op once
-      # built); doing it here first makes a sidecar failure its own red step.
+      # Build sidecars first so a sidecar failure is its own red step.
       - name: Build the diffity-mcp and diffity-cli sidecars for both architectures
         run: node scripts/prepare-mcp.mjs --release
         env:
           TAURI_ENV_TARGET_TRIPLE: universal-apple-darwin
 
-      - name: Stamp version from tag
+      - name: Resolve and validate the release version
+        id: version
         run: |
-          VER="${GITHUB_REF_NAME#v}"
-          python3 -c "import json,sys; p='src-tauri/tauri.conf.json'; d=json.load(open(p)); d['version']=sys.argv[1]; json.dump(d,open(p,'w'),indent=2)" "$VER"
-          echo "Building Diffity $VER"
+          VERSION=$(python3 -c "import json; print(json.load(open('src-tauri/tauri.conf.json'))['version'])")
+          TAG="v$VERSION"
+          case "$GITHUB_REF" in
+            refs/tags/*)
+              if [ "$GITHUB_REF_NAME" != "$TAG" ]; then
+                echo "Tag $GITHUB_REF_NAME must match tauri.conf.json version ($TAG)." >&2
+                exit 1
+              fi
+              TAG=$GITHUB_REF_NAME
+              ;;
+          esac
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Building Diffract $VERSION as $TAG"
 
-      - name: Resolve release notes from tag
-        id: notes
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          DEFAULT='Download the universal .dmg (runs on Apple Silicon and Intel). The app updates itself after install.'
-          BODY=""
-          TYPE=$(gh api "repos/${{ github.repository }}/git/refs/tags/${{ github.ref_name }}" -q .object.type 2>/dev/null || true)
-          OBJ=$(gh api "repos/${{ github.repository }}/git/refs/tags/${{ github.ref_name }}" -q .object.sha 2>/dev/null || true)
-          if [ "$TYPE" = "tag" ] && [ -n "$OBJ" ]; then
-            BODY=$(gh api "repos/${{ github.repository }}/git/tags/$OBJ" -q .message 2>/dev/null || true)
-          fi
-          if [ -z "$BODY" ]; then
-            BODY="$DEFAULT"
-          fi
-          {
-            echo 'body<<RELEASE_NOTES_EOF'
-            echo "$BODY"
-            echo 'RELEASE_NOTES_EOF'
-          } >> "$GITHUB_OUTPUT"
-
-      # The icon ships compiled (`icons/Assets.car`) because the runner's
-      # actool has crashed on Icon Composer bundles (tauri-apps/tauri#15315).
-      # The bundler copies a listed .car and never runs actool; if the .car is
-      # ever missing, it should at least reach for the newest Xcode here.
-      - name: Point at the newest Xcode, and say which one
+      # The Liquid Glass .icon catalog is compiled only where Xcode/actool exists.
+      - name: Select Xcode
         run: |
           newest=$(printf '%s\n' /Applications/Xcode*.app | sort -V | tail -1)
           if [ -d "$newest" ]; then
@@ -94,35 +74,19 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Apple credentials are optional; without them the DMG is unsigned.
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: .
-          tagName: ${{ github.ref_name }}
-          releaseName: __VERSION__
-          releaseBody: ${{ steps.notes.outputs.body }}
+          tagName: ${{ steps.version.outputs.tag }}
+          releaseCommitish: ${{ github.sha }}
+          releaseName: Diffract ${{ steps.version.outputs.version }}
+          releaseBody: Universal macOS DMG for Diffract ${{ steps.version.outputs.version }} (Apple Silicon and Intel).
           releaseDraft: false
           prerelease: false
           args: --target universal-apple-darwin --verbose
-
-  # The website shows the latest version, so rebuild it once the release is out.
-  website:
-    name: Rebuild the website
-    needs: desktop
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger the Cloudflare deploy hook
-        env:
-          DEPLOY_HOOK_URL: ${{ secrets.CLOUDFLARE_WEB_DEPLOY_HOOK }}
-        run: |
-          if [ -z "$DEPLOY_HOOK_URL" ]; then
-            echo "CLOUDFLARE_WEB_DEPLOY_HOOK is not set; skipping." >&2
-            exit 0
-          fi
-          curl -fsS -X POST "$DEPLOY_HOOK_URL"

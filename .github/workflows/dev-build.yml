@@ -1,8 +1,7 @@
 name: Dev build
 
-# Builds "Diffity Dev" from the branch it is run on: an amber-icon copy of the app with its own bundle id,
-# data, link scheme (diffity-dev://) and command (diffity-dev), so it installs next to the release.
-# It replaces the rolling `dev` pre-release; the updater reads releases/latest, which skips pre-releases.
+# Build a downloadable Diffract Dev app with a separate bundle id, data directory,
+# and diffract-dev:// link scheme. The rolling `dev` prerelease is replaced each run.
 
 on:
   workflow_dispatch:
@@ -22,8 +21,6 @@ jobs:
       DIFFITY_CHANNEL: dev
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
@@ -48,23 +45,23 @@ jobs:
         env:
           TAURI_ENV_TARGET_TRIPLE: universal-apple-darwin
 
-      - name: Stamp a dev version from the last release
+      - name: Stamp a dev version from the app version
         id: version
         run: |
-          LAST=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || echo v0.0.0)
-          VER="${LAST#v}-dev.${{ github.run_number }}"
+          BASE=$(python3 -c "import json; print(json.load(open('src-tauri/tauri.conf.json'))['version'])")
+          VER="${BASE}-dev.${{ github.run_number }}"
           python3 -c "import json,sys; p='src-tauri/tauri.conf.json'; d=json.load(open(p)); d['version']=sys.argv[1]; json.dump(d,open(p,'w'),indent=2)" "$VER"
           echo "version=$VER" >> "$GITHUB_OUTPUT"
           echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-          echo "Building Diffity Dev $VER"
+          echo "Building Diffract Dev $VER"
 
       - name: Remove the previous dev release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release delete dev --cleanup-tag --yes || true
 
-      # See release.yml: the icon ships as a compiled Assets.car, so actool should not run.
-      - name: Point at the newest Xcode, and say which one
+      # The Liquid Glass .icon catalog is compiled only where Xcode/actool exists.
+      - name: Select Xcode
         run: |
           newest=$(printf '%s\n' /Applications/Xcode*.app | sort -V | tail -1)
           if [ -d "$newest" ]; then
@@ -76,6 +73,7 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Apple credentials are optional; without them the DMG is unsigned.
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -86,11 +84,11 @@ jobs:
           projectPath: .
           tagName: dev
           releaseCommitish: ${{ github.sha }}
-          releaseName: Diffity Dev ${{ steps.version.outputs.version }}
+          releaseName: Diffract Dev ${{ steps.version.outputs.version }}
           releaseBody: |
-            Test build of `${{ github.ref_name }}` at ${{ steps.version.outputs.short }}. Not a release.
+            Downloadable test build of `${{ github.ref_name }}` at ${{ steps.version.outputs.short }}. Not a stable release.
 
-            Installs as **Diffity Dev** (amber icon) next to Diffity, with its own data. It does not update itself; run the Dev build workflow again for a newer one.
+            Installs as **Diffract Dev** alongside Diffract, with its own bundle identifier and data directory.
           releaseDraft: false
           prerelease: true
           args: --target universal-apple-darwin --config src-tauri/tauri.dev.conf.json --verbose
